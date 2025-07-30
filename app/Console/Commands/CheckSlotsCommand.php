@@ -32,8 +32,8 @@ class CheckSlotsCommand extends Command
         $this->info('Checking slots...');
 
         $client = new InpolClient();
-        if (!$client->login()) {
-            $this->error('Login failed.');
+        if (!$client->getToken()) {
+            $this->error('Login failed. ');
             return;
         }
 
