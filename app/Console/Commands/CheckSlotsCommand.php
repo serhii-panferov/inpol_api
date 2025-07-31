@@ -30,19 +30,23 @@ class CheckSlotsCommand extends Command
     public function handle(): void
     {
         $this->info('Checking slots...');
-
         $client = new InpolClient();
+        //1 step: Check if the token is available
         if (!$client->getToken()) {
             $this->error('Login failed. ');
             return;
         }
-
         $this->info('Login successful.');
-
+        //2 step: Fetch people cases
+        $countCases = $client->fetchCases();
+        if (!$countCases) {
+            $this->error('Failed to fetch cases.');
+            return;
+        }
+        $this->info($countCases . ' people cases received successful.');
         $slots = $client->fetchSlots();
-
         if (empty($slots)) {
-            $this->info('No available slots.');
+            $this->warn('No available slots.');
         } else {
             foreach ($slots as $slot) {
                 $this->line("- " . $slot);

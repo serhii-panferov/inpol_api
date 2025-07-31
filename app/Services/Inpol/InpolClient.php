@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Inpol;
 
 use App\Models\InpolToken;
+use App\Models\PeopleCase;
 use GuzzleHttp\Client;
 
 class InpolClient
@@ -70,6 +71,35 @@ class InpolClient
             return $data['token'] ?? null;
         } catch (\Throwable $e) {
             logger()->error('Login failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function fetchCases($results = 10): ?int
+    {
+        $peopleCases = PeopleCase::whereStatus(PeopleCase::STATUS_NEW)->get();
+        if ($peopleCases->isNotEmpty()) {
+            logger()->info('There are ' . count($peopleCases) . ' cases already in the database.');
+            return count($peopleCases);
+        }
+        try {
+            $response = $this->client->get('api/proceedings/list', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token,
+                ],
+                'query' => [
+                    'page' => 1,
+                    'results' => $results,
+                    'filterBy' => '',
+                    'orderBy' => '',
+                ],
+            ]);
+            $data = json_decode((string) $response->getBody(), true);
+            logger()->info('TotalResults of received cases: ' . $data['totalResults']);
+            PeopleCase::updateOrCreateMany($data['items']);
+            return count($data['items']) ?? null;
+        } catch (\Throwable $e) {
+            logger()->error('Failed to fetch cases: ' . $e->getMessage());
             return null;
         }
     }
