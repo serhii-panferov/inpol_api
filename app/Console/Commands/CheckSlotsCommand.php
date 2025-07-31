@@ -45,7 +45,8 @@ class CheckSlotsCommand extends Command
             return;
         }
         $this->info($countCases . ' people cases received successful.');
-
+        // 3 step: Fetch reservation queues
+        //TODO Add a loop to select all people cases with status new.
         $caseId = $client->getCaseId();
         $reservationQueues = $client->fetchReservationQueues($caseId);
 
