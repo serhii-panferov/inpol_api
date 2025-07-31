@@ -19,7 +19,6 @@ class InpolClient
             'base_uri' => 'https://inpol.mazowieckie.pl/',
             'cookies' => true,
             'headers' => [
-                //':authority' => 'inpol.mazowieckie.pl',
                 'Accept-Language' => 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,uk;q=0.6,da;q=0.5',
                 'origin' => 'https://inpol.mazowieckie.pl',
                 'Recaptchaactionname' => 'sign_in',
@@ -41,17 +40,17 @@ class InpolClient
             ->latest('created_at')
             ->first();
         if ($existing) {
+            logger()->info('Using existing token: ' . $existing->token);
             return $existing->token;
         }
         $newToken = $this->login();
-        echo "New token: " . $newToken . "\n";
+        logger()->info('New token: ' . $newToken);
         if ($newToken) {
             InpolToken::create([
                 'token' => $newToken,
                 'expires_at' => now()->addMinutes(15),
             ]);
         }
-
         return $newToken;
     }
 
@@ -67,10 +66,7 @@ class InpolClient
                     'expiryMinutes' => 0,
                 ],
             ]);
-
-           // echo "Response status code: " . $response->getStatusCode() . "\n";
             $data = json_decode((string) $response->getBody(), true);
-          //  echo "Login successful, token: " . $data . "\n";
             return $data['token'] ?? null;
         } catch (\Throwable $e) {
             logger()->error('Login failed: ' . $e->getMessage());
