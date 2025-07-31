@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\ReservationQueues;
 use App\Services\Inpol\InpolClient;
 use Illuminate\Console\Command;
 
@@ -44,6 +45,14 @@ class CheckSlotsCommand extends Command
             return;
         }
         $this->info($countCases . ' people cases received successful.');
+
+        $caseId = $client->getCaseId();
+        $reservationQueues = $client->fetchReservationQueues($caseId);
+
+        if (!$reservationQueues) {
+            $this->error('Failed to fetch reservation queues.');
+            return;
+        }
         $slots = $client->fetchSlots();
         if (empty($slots)) {
             $this->warn('No available slots.');

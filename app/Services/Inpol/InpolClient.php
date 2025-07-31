@@ -6,6 +6,7 @@ namespace App\Services\Inpol;
 
 use App\Models\InpolToken;
 use App\Models\PeopleCase;
+use App\Models\ReservationQueues;
 use GuzzleHttp\Client;
 
 class InpolClient
@@ -104,6 +105,27 @@ class InpolClient
         }
     }
 
+    public function fetchReservationQueues($caseId): ?array
+    {
+        //TODO Considere using a static values instead of fetching from API.
+        try {
+            $response = $this->client->get(
+                '/api/proceedings/' . $caseId .'/reservationQueues',
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->token,
+                    ],
+                ]
+            );
+            $data = json_decode((string) $response->getBody(), true);
+            logger()->info('TotalResults of received reservation queues: ' . $data['totalResults']);
+            return $data ?? null;
+        } catch (\Throwable $e) {
+            logger()->error('Failed to fetch cases: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     public function fetchSlots(): array
     {
         // TODO: Парсинг сторінки з календарем
@@ -114,4 +136,11 @@ class InpolClient
     {
         return $this->token;
     }
+
+    public function getCaseId(): ?string
+    {
+        //Todo stop here and implement logic to get case ID
+        return '';
+    }
+
 }
