@@ -31,7 +31,7 @@ class CheckSlotsCommand extends Command
      */
     public function handle(): void
     {
-        $this->info('Checking slots...');
+        $this->info('Checking dates...');
         $client = new InpolClient();
         //1 step: Check if the token is available
         if (!$client->getToken()) {
@@ -50,17 +50,21 @@ class CheckSlotsCommand extends Command
         foreach ($peopleCases as $peopleCase) {
             // 3 step: Fetch reservation queues
             $caseId = $peopleCase['id'];
-            $reservationQueues = $client->fetchReservationQueues($caseId);
+            $reservationQueues = $client->fetchReservationQueues($caseId, $peopleCase['type_id']);
             if (!$reservationQueues) {
                 $this->error('Failed to fetch reservation queues.');
                 return;
             }
-            $slots = $client->fetchSlots();
-            if (empty($slots)) {
-                $this->warn('No available slots.');
-            } else {
-                foreach ($slots as $slot) {
-                    $this->line("- " . $slot);
+            foreach ($reservationQueues as $reservationQueue) {
+                $this->info("Processing reservation queue: " . $reservationQueue['english_name']);
+                // 4 step: Fetch available dates
+                $dates = $client->fetchDates($reservationQueue['local_id']);
+                if (empty($dates)) {
+                    $this->warn('No available dates.');
+                } else {
+                    foreach ($dates as $date) {
+                        $this->line("- " . $date);
+                    }
                 }
             }
         }

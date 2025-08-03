@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ReservationQueues extends Model
 {
@@ -14,15 +13,16 @@ class ReservationQueues extends Model
         'local_id',
         'address',
         'english_name',
+        'type_people_case_id',
     ];
 
     protected $casts = [
         'local_id' => 'string',
     ];
 
-    public function typePeopleCase(): HasOne
+    public function typePeopleCase(): BelongsTo
     {
-        return $this->hasOne(TypesPeopleCase::class, 'type_people_cases_id');
+        return $this->belongsTo(TypesPeopleCase::class, 'type_people_case_id');
     }
 
     public static function updateOrCreateMany(mixed $data)
@@ -36,7 +36,7 @@ class ReservationQueues extends Model
                 self::updateOrCreate(
                     ['local_id' => $location['id']],
                     [
-                        'type_people_cases_id' => $caseTypeId,
+                        'type_people_case_id' => $caseTypeId,
                         'address' => $location['localization'],
                         'english_name' => $location['english'],
                     ]

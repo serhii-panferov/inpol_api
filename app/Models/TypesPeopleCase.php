@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TypesPeopleCase extends Model
 {
@@ -19,8 +19,8 @@ class TypesPeopleCase extends Model
         'name' => 'string',
     ];
 
-    public function account(): BelongsTo
+    public function reservationQueues(): HasMany
     {
-        return $this->belongsTo(ReservationQueues::class, 'type_people_cases_id');
+        return $this->hasMany(ReservationQueues::class, 'type_people_case_id');
     }
 }

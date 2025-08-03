@@ -8,6 +8,7 @@ use App\Models\InpolAccount;
 use App\Models\InpolToken;
 use App\Models\PeopleCase;
 use App\Models\ReservationQueues;
+use App\Models\TypesPeopleCase;
 use GuzzleHttp\Client;
 
 class InpolClient
@@ -100,7 +101,7 @@ class InpolClient
         $peopleCases = PeopleCase::with('account')
             ->where(['status' => PeopleCase::STATUS_NEW])
             ->where(['inpol_account_id' => $this->account->getKey()])
-            ->get(['id', 'inpol_account_id']);
+            ->get(['id', 'type_id', 'inpol_account_id']);
         if ($peopleCases->isNotEmpty()) {
             logger()->info('There are ' . $peopleCases->count() . ' cases already in the database.');
             return $peopleCases->toArray();
@@ -131,14 +132,16 @@ class InpolClient
         }
     }
 
-    public function fetchReservationQueues($caseId): ?array
+    public function fetchReservationQueues($caseId, $typeId): ?array
     {
-        /** @var \App\Models\PeopleCase $peopleCases */
-        $peopleCases = PeopleCase::with('account')
-            ->where(['status' => PeopleCase::STATUS_NEW])
-            ->where(['inpol_account_id' => $this->account->getKey()])
-            ->get(['id', 'inpol_account_id']);
-        //TODO Considere using a static values instead of fetching from API.
+        $ReservationQueues = ReservationQueues::with('typePeopleCase')
+            ->where('type_people_case_id', TypesPeopleCase::where('type_id', $typeId)->first()->id)
+            ->get()
+            ->toArray();
+        if (!empty($ReservationQueues)) {
+            return $ReservationQueues;
+        }
+        //TODO Consider using a static values instead of fetching from API.
         try {
             $reservationPath = '/api/proceedings/' . $caseId . '/reservationQueues';
             $referer = self::INPOL_API_DOMAIN . 'home/cases/'. $caseId;
@@ -161,10 +164,27 @@ class InpolClient
         }
     }
 
-    public function fetchSlots(): array
+    public function fetchDates($queueId): ?array
     {
-        // TODO: Парсинг сторінки з календарем
-        return [];
+        try {
+            $reservationPath = '/api/reservations/queue/' . $queueId . '/dates';
+            //$referer = self::INPOL_API_DOMAIN . 'home/cases/'. $caseId;
+            $response = $this->client->get(
+                $reservationPath,
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->token,
+                       // 'Referer' => $referer,
+                    ],
+                ]
+            );
+            $data = json_decode((string) $response->getBody(), true);
+            logger()->info('The reservation queue has ' . count($data) . ' available dates.');
+            return $data ?? null;
+        } catch (\Throwable $e) {
+            logger()->error('Failed to fetch reservation queues dates: ' . $e->getMessage());
+            return null;
+        }
     }
 
     public function getToken(): ?string
