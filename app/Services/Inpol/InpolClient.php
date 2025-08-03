@@ -16,17 +16,17 @@ class InpolClient
 
     protected ?string $token = null;
 
+    private const INPOL_API_DOMAIN = 'https://inpol.mazowieckie.pl/';
+
     public function __construct()
     {
         $this->client = new Client([
-            'base_uri' => 'https://inpol.mazowieckie.pl/',
+            'base_uri' => self::INPOL_API_DOMAIN,
             'cookies' => true,
             'headers' => [
                 'Accept-Language' => 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,uk;q=0.6,da;q=0.5',
-                'origin' => 'https://inpol.mazowieckie.pl',
-                'Recaptchaactionname' => 'sign_in',
                 'Priority' => 'u=1, i',
-                'Referer' => 'https://inpol.mazowieckie.pl/login',
+                'Referer' => self::INPOL_API_DOMAIN . '/login',
                 'Dnt' => '1',
                 'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
                 'Content-Type' => 'application/json',
@@ -66,6 +66,10 @@ class InpolClient
         $password = env('INPOL_PASSWORD');
         try {
             $response = $this->client->post('identity/sign-in', [
+                'headers' => [
+                    'origin' => self::INPOL_API_DOMAIN,
+                    'Recaptchaactionname' => 'sign_in',
+                ],
                 'json' => [
                     'email'    => $email,
                     'password' => $password,
@@ -88,9 +92,12 @@ class InpolClient
             return count($peopleCases);
         }
         try {
+            $casesPath = 'api/proceedings/list';
+            $referer = self::INPOL_API_DOMAIN . $casesPath;
             $response = $this->client->get('api/proceedings/list', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $this->token,
+                    'Referer' => $referer,
                 ],
                 'query' => [
                     'page' => 1,
@@ -104,7 +111,7 @@ class InpolClient
             PeopleCase::updateOrCreateMany($data['items']);
             return count($data['items']) ?? null;
         } catch (\Throwable $e) {
-           // logger()->error('Failed to fetch cases: ' . $e->getMessage());
+            logger()->error('Failed to fetch cases: ' . $e->getMessage());
             return null;
         }
     }
@@ -113,16 +120,20 @@ class InpolClient
     {
         //TODO Considere using a static values instead of fetching from API.
         try {
+            $reservationPath = '/login/api/proceedings/' . $caseId . '/reservationQueues';
+            $referer = self::INPOL_API_DOMAIN . $reservationPath;
             $response = $this->client->get(
-                'api/proceedings/' . $caseId .'/reservationQueues',
+                $reservationPath,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->token,
+                        'Referer' => $referer,
                     ],
                 ]
             );
             $data = json_decode((string) $response->getBody(), true);
-            logger()->info('TotalResults of received reservation queues: ' . $data['totalResults']);
+            $countReservationQueues = count($data);
+            logger()->info('TotalResults of received reservation queues: ' . $countReservationQueues);
             return $data ?? null;
         } catch (\Throwable $e) {
             logger()->error('Failed to fetch reservation queues: ' . $e->getMessage());

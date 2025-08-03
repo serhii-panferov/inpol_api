@@ -13,4 +13,9 @@ class InpolAccount extends Model
     {
         return $this->hasMany(InpolToken::class);
     }
+
+    public function cases(): HasMany
+    {
+        return $this->hasMany(PeopleCase::class);
+    }
 }

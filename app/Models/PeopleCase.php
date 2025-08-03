@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property string $id
@@ -44,6 +45,7 @@ class PeopleCase extends Model
         'type_names',
         'type_id',
         'person',
+        'inpol_account_id',
         'creation_date',
     ];
 
@@ -51,6 +53,11 @@ class PeopleCase extends Model
         'type_names' => 'array',
         'creation_date' => 'datetime',
     ];
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(InpolAccount::class, 'inpol_account_id');
+    }
 
     public static function updateOrCreateMany(mixed $data)
     {

@@ -19,6 +19,8 @@ return new class extends Migration
             $table->json('type_names');
             $table->string('person');
             $table->timestamp('creation_date');
+            $table->foreignId('inpol_account_id')
+                ->constrained('inpol_accounts');
             $table->timestamps();
         });
     }
