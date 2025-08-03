@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\PeopleCase;
 use App\Models\ReservationQueues;
 use App\Services\Inpol\InpolClient;
 use Illuminate\Console\Command;
@@ -47,19 +48,25 @@ class CheckSlotsCommand extends Command
         $this->info($countCases . ' people cases received successful.');
         // 3 step: Fetch reservation queues
         //TODO Add a loop to select all people cases with status new.
-        $caseId = $client->getCaseId();
-        $reservationQueues = $client->fetchReservationQueues($caseId);
-
-        if (!$reservationQueues) {
-            $this->error('Failed to fetch reservation queues.');
-            return;
-        }
-        $slots = $client->fetchSlots();
-        if (empty($slots)) {
-            $this->warn('No available slots.');
-        } else {
-            foreach ($slots as $slot) {
-                $this->line("- " . $slot);
+        $peopleCases = PeopleCase::where(['status' => PeopleCase::STATUS_NEW])
+            ->get('id');
+        foreach ($peopleCases as $peopleCase) {
+            $caseId = $peopleCase->getAttribute('id');
+            $reservationQueues = $client->fetchReservationQueues($caseId);
+            $this->info( $peopleCase->getAttribute('person'));
+            $this->info($caseId);
+            dd($reservationQueues);
+            if (!$reservationQueues) {
+                $this->error('Failed to fetch reservation queues.');
+                return;
+            }
+            $slots = $client->fetchSlots();
+            if (empty($slots)) {
+                $this->warn('No available slots.');
+            } else {
+                foreach ($slots as $slot) {
+                    $this->line("- " . $slot);
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Inpol;
 
+use App\Models\InpolAccount;
 use App\Models\InpolToken;
 use App\Models\PeopleCase;
 use App\Models\ReservationQueues;
@@ -38,7 +39,10 @@ class InpolClient
 
     protected function getOrCreateToken(): ?string
     {
+        /** @var \App\Models\InpolAccount $account */
+        $account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
         $existing = InpolToken::where('expires_at', '>', now())
+            ->where('inpol_account_id', $account->id)
             ->latest('created_at')
             ->first();
         if ($existing) {
@@ -48,7 +52,7 @@ class InpolClient
         $newToken = $this->login();
         logger()->info('New token: ' . $newToken);
         if ($newToken) {
-            InpolToken::create([
+            $account->tokens()->create([
                 'token' => $newToken,
                 'expires_at' => now()->addMinutes(15),
             ]);
@@ -100,7 +104,7 @@ class InpolClient
             PeopleCase::updateOrCreateMany($data['items']);
             return count($data['items']) ?? null;
         } catch (\Throwable $e) {
-            logger()->error('Failed to fetch cases: ' . $e->getMessage());
+           // logger()->error('Failed to fetch cases: ' . $e->getMessage());
             return null;
         }
     }
@@ -110,7 +114,7 @@ class InpolClient
         //TODO Considere using a static values instead of fetching from API.
         try {
             $response = $this->client->get(
-                '/api/proceedings/' . $caseId .'/reservationQueues',
+                'api/proceedings/' . $caseId .'/reservationQueues',
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->token,
@@ -121,7 +125,7 @@ class InpolClient
             logger()->info('TotalResults of received reservation queues: ' . $data['totalResults']);
             return $data ?? null;
         } catch (\Throwable $e) {
-            logger()->error('Failed to fetch cases: ' . $e->getMessage());
+            logger()->error('Failed to fetch reservation queues: ' . $e->getMessage());
             return null;
         }
     }
@@ -136,11 +140,4 @@ class InpolClient
     {
         return $this->token;
     }
-
-    public function getCaseId(): ?string
-    {
-        //Todo stop here and implement logic to get case ID
-        return '';
-    }
-
 }

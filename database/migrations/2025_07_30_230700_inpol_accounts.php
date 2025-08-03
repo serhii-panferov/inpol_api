@@ -6,20 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
-        Schema::create('inpol_tokens', function (Blueprint $table) {
+        Schema::create('inpol_accounts', function (Blueprint $table) {
             $table->id();
-            $table->text('token');
-            $table->foreignId('inpol_account_id')
-                ->constrained('inpol_accounts');
-            $table->timestamp('expires_at')->nullable();
+            $table->string('email')->unique();
             $table->timestamps();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
-        Schema::dropIfExists('inpol_tokens');
+        Schema::dropIfExists('inpol_accounts');
     }
 };

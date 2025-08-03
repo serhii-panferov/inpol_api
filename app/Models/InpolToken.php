@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -24,10 +25,16 @@ class InpolToken extends Model
 {
     protected $fillable = [
         'token',
+        'inpol_account_id',
         'expires_at',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
     ];
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(InpolAccount::class, 'inpol_account_id');
+    }
 }
