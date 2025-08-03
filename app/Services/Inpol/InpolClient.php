@@ -14,6 +14,8 @@ class InpolClient
 {
     protected Client $client;
 
+    protected InpolAccount $account;
+
     protected ?string $token = null;
 
     private const INPOL_API_DOMAIN = 'https://inpol.mazowieckie.pl/';
@@ -22,6 +24,7 @@ class InpolClient
     {
         $this->client = new Client([
             'base_uri' => self::INPOL_API_DOMAIN,
+            'timeout' => 10,
             'cookies' => true,
             'headers' => [
                 'Accept-Language' => 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,uk;q=0.6,da;q=0.5',
@@ -34,15 +37,14 @@ class InpolClient
                 'Accept' => '*/*',
             ],
         ]);
+        $this->account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
         $this->token = $this->getOrCreateToken();
     }
 
     protected function getOrCreateToken(): ?string
     {
-        /** @var \App\Models\InpolAccount $account */
-        $account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
         $existing = InpolToken::where('expires_at', '>', now())
-            ->where('inpol_account_id', $account->id)
+            ->where('inpol_account_id', $this->account->getKey())
             ->latest('created_at')
             ->first();
         if ($existing) {
@@ -52,7 +54,8 @@ class InpolClient
         $newToken = $this->login();
         logger()->info('New token: ' . $newToken);
         if ($newToken) {
-            $account->tokens()->create([
+            $this->account->tokens()
+                ->create([
                 'token' => $newToken,
                 'expires_at' => now()->addMinutes(15),
             ]);
@@ -84,20 +87,31 @@ class InpolClient
         }
     }
 
-    public function fetchCases($results = 10): ?int
+    /**
+     * Fetch cases from Inpol API.
+     * This method retrieves cases with status 'new' for the current account.
+     *
+     * @param int $results The number of results to fetch, default is 10.
+     * @return PeopleCase[]|null
+     */
+    public function fetchCases(int $results = 10): ?array
     {
-        $peopleCases = PeopleCase::whereStatus(PeopleCase::STATUS_NEW)->get();
+        /** @var \App\Models\PeopleCase $peopleCases */
+        $peopleCases = PeopleCase::with('account')
+            ->where(['status' => PeopleCase::STATUS_NEW])
+            ->where(['inpol_account_id' => $this->account->getKey()])
+            ->get(['id', 'inpol_account_id']);
         if ($peopleCases->isNotEmpty()) {
-            logger()->info('There are ' . count($peopleCases) . ' cases already in the database.');
-            return count($peopleCases);
+            logger()->info('There are ' . $peopleCases->count() . ' cases already in the database.');
+            return $peopleCases->toArray();
         }
         try {
             $casesPath = 'api/proceedings/list';
-            $referer = self::INPOL_API_DOMAIN . $casesPath;
-            $response = $this->client->get('api/proceedings/list', [
+            $referer = self::INPOL_API_DOMAIN . 'home/cases';
+            $response = $this->client->get($casesPath, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $this->token,
-                    'Referer' => $referer,
+                   // 'Referer' => $referer,
                 ],
                 'query' => [
                     'page' => 1,
@@ -106,10 +120,11 @@ class InpolClient
                     'orderBy' => '',
                 ],
             ]);
+            //logger()->info(var_export($response, true));
             $data = json_decode((string) $response->getBody(), true);
             logger()->info('TotalResults of received cases: ' . $data['totalResults']);
-            PeopleCase::updateOrCreateMany($data['items']);
-            return count($data['items']) ?? null;
+            PeopleCase::updateOrCreateMany($data['items'], $this->account);
+            return $data['items'] ?? null;
         } catch (\Throwable $e) {
             logger()->error('Failed to fetch cases: ' . $e->getMessage());
             return null;
@@ -118,10 +133,15 @@ class InpolClient
 
     public function fetchReservationQueues($caseId): ?array
     {
+        /** @var \App\Models\PeopleCase $peopleCases */
+        $peopleCases = PeopleCase::with('account')
+            ->where(['status' => PeopleCase::STATUS_NEW])
+            ->where(['inpol_account_id' => $this->account->getKey()])
+            ->get(['id', 'inpol_account_id']);
         //TODO Considere using a static values instead of fetching from API.
         try {
-            $reservationPath = '/login/api/proceedings/' . $caseId . '/reservationQueues';
-            $referer = self::INPOL_API_DOMAIN . $reservationPath;
+            $reservationPath = '/api/proceedings/' . $caseId . '/reservationQueues';
+            $referer = self::INPOL_API_DOMAIN . 'home/cases/'. $caseId;
             $response = $this->client->get(
                 $reservationPath,
                 [

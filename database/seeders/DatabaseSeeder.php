@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
 //        ]);
         $this->call([
             InpolAccountSeeder::class,
+            TypesPeopleCasesSeeder::class,
+            ReservationQueueSeeder::class,
         ]);
     }
 }

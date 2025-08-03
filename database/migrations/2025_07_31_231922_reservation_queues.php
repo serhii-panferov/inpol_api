@@ -16,6 +16,8 @@ return new class extends Migration
             $table->uuid('local_id')->unique();
             $table->string('address');
             $table->string('english_name');
+            $table->foreignId('type_people_cases_id')
+                ->constrained('types_people_cases');
             $table->timestamps();
         });
     }

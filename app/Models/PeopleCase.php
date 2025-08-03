@@ -59,7 +59,7 @@ class PeopleCase extends Model
         return $this->belongsTo(InpolAccount::class, 'inpol_account_id');
     }
 
-    public static function updateOrCreateMany(mixed $data)
+    public static function updateOrCreateMany(mixed $data, InpolAccount $account)
     {
         foreach ($data as $item) {
             if ($item['status'] !== self::STATUS_NEW) {
@@ -80,6 +80,7 @@ class PeopleCase extends Model
                         'russian' => $item['type']['russian'],
                         'ukrainian' => $item['type']['ukrainian'],
                     ],
+                    'inpol_account_id' => $account->getKey(),
                 ]
             );
         }

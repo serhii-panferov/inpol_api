@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ReservationQueues extends Model
 {
@@ -18,16 +20,28 @@ class ReservationQueues extends Model
         'local_id' => 'string',
     ];
 
+    public function typePeopleCase(): HasOne
+    {
+        return $this->hasOne(TypesPeopleCase::class, 'type_people_cases_id');
+    }
+
     public static function updateOrCreateMany(mixed $data)
     {
-        foreach ($data as $item) {
-            self::updateOrCreate(
-                ['local_id' => $item['local_id']],
-                [
-                    'address' => $item['localization'],
-                    'english_name' => $item['english'],
-                ]
-            );
+        foreach ($data as $typeId => $locations) {
+           $caseTypeId = TypesPeopleCase::where(['type_id' => $typeId])
+                ->get('id')
+                ->first()
+                ->toArray()['id'];
+            foreach ($locations as $location) {
+                self::updateOrCreate(
+                    ['local_id' => $location['id']],
+                    [
+                        'type_people_cases_id' => $caseTypeId,
+                        'address' => $location['localization'],
+                        'english_name' => $location['english'],
+                    ]
+                );
+            }
         }
     }
 }

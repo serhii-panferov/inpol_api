@@ -40,22 +40,17 @@ class CheckSlotsCommand extends Command
         }
         $this->info('Login successful.');
         //2 step: Fetch people cases
-        $countCases = $client->fetchCases();
+        $peopleCases = $client->fetchCases();
+        $countCases = count($peopleCases);
         if (!$countCases) {
             $this->error('Failed to fetch cases.');
             return;
         }
-        $this->info($countCases . ' people cases received successful.');
-        // 3 step: Fetch reservation queues
-        //TODO Add a loop to select all people cases with status new.
-        $peopleCases = PeopleCase::where(['status' => PeopleCase::STATUS_NEW])
-            ->get('id');
+        $this->info( "$countCases people cases received successful.");
         foreach ($peopleCases as $peopleCase) {
-            $caseId = $peopleCase->getAttribute('id');
+            // 3 step: Fetch reservation queues
+            $caseId = $peopleCase['id'];
             $reservationQueues = $client->fetchReservationQueues($caseId);
-            $this->info( $peopleCase->getAttribute('person'));
-            $this->info($caseId);
-            dd($reservationQueues);
             if (!$reservationQueues) {
                 $this->error('Failed to fetch reservation queues.');
                 return;
