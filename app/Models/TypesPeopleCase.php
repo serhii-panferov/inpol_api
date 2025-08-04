@@ -23,4 +23,9 @@ class TypesPeopleCase extends Model
     {
         return $this->hasMany(ReservationQueues::class, 'type_people_case_id');
     }
+
+    public function reservationSlots(): HasMany
+    {
+        return $this->hasMany(ReservationSlots::class, 'type_people_case_id');
+    }
 }
