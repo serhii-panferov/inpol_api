@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Services\Inpol;
 
 use App\Models\InpolAccount;
+use App\Models\InpolCookies;
 use App\Models\InpolToken;
 use App\Models\PeopleCase;
 use App\Models\ReservationQueues;
 use App\Models\ReservationSlots;
 use App\Models\TypesPeopleCase;
 use GuzzleHttp\Client;
+use GuzzleHttp\Cookie\CookieJar;
+use Illuminate\Database\Eloquent\Collection;
 
 class InpolClient
 {
@@ -19,15 +22,18 @@ class InpolClient
     protected InpolAccount $account;
 
     protected ?string $token = null;
+    protected CookieJar $jar;
 
     private const INPOL_API_DOMAIN = 'https://inpol.mazowieckie.pl/';
 
     public function __construct()
     {
+        $this->jar = new CookieJar();
+        $this->account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
         $this->client = new Client([
             'base_uri' => self::INPOL_API_DOMAIN,
-            'timeout' => 20,
-            'cookies' => true,
+            'timeout' => 30,
+            'cookies' => $this->jar,
             'headers' => [
                 'Accept-Language' => 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,uk;q=0.6,da;q=0.5',
                 'Priority' => 'u=1, i',
@@ -37,10 +43,11 @@ class InpolClient
                 'Content-Type' => 'application/json',
                 'Accept-encoding' => 'gzip, deflate, br',
                 'Accept' => '*/*',
+                'Connection' => 'keep-alive',
             ],
         ]);
-        $this->account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
         $this->token = $this->getOrCreateToken();
+        $this->updateRequestCookies();
     }
 
     protected function getOrCreateToken(): ?string
@@ -73,13 +80,22 @@ class InpolClient
             $response = $this->client->post('identity/sign-in', [
                 'headers' => [
                     'origin' => self::INPOL_API_DOMAIN,
-                    'Recaptchaactionname' => 'sign_in',
+                    //'Recaptchaactionname' => 'sign_in',
                 ],
                 'json' => [
                     'email'    => $email,
                     'password' => $password,
                     'expiryMinutes' => 0,
                 ],
+            ]);
+            $cookies = $this->jar->toArray();
+            if (empty($cookies)) {
+                logger()->error('No cookies received after login.');
+                return null;
+            }
+            InpolCookies::create([
+                'cookie' => json_encode($cookies),
+                'inpol_account_id' => $this->account->getKey(),
             ]);
             $data = json_decode((string) $response->getBody(), true);
             return $data['token'] ?? null;
@@ -122,6 +138,8 @@ class InpolClient
                     'orderBy' => '',
                 ],
             ]);
+            $cookies = $this->jar->toArray();
+            logger()->info('Cookies after login: ' . json_encode($cookies));
             //logger()->info(var_export($response, true));
             $data = json_decode((string) $response->getBody(), true);
             logger()->info('TotalResults of received cases: ' . $data['totalResults']);
@@ -346,5 +364,28 @@ class InpolClient
             $dateOptions['+6 weeks'] => date('Y-m-d', strtotime('+6 weeks')),
             $dateOptions['today'] => date('Y-m-d'),
         };
+    }
+
+    protected function updateRequestCookies(): void
+    {
+        /** @var Collection $cookies */
+        $cookies = InpolCookies::where('inpol_account_id', $this->account->getKey())->get('cookie')->first();
+        if ($cookies === null) {
+            return;
+        }
+        $storedCookies = json_decode($cookies->getAttribute('cookie'), true);
+        $this->jar = $this->jar::fromArray(
+            collect($storedCookies)->mapWithKeys(fn($c) => [
+                $c['Name'] => $c['Value']
+            ])->toArray(),
+            'inpol.mazowieckie.pl'
+        );
+    }
+
+    public function cleanUp()
+    {
+        InpolCookies::where('inpol_account_id', $this->account->getKey())
+            ->get()
+            ->delete();
     }
 }

@@ -18,4 +18,14 @@ class InpolAccount extends Model
     {
         return $this->hasMany(PeopleCase::class);
     }
+
+    public function cookies(): HasMany
+    {
+        return $this->hasMany(InpolCookies::class);
+    }
+
+    public function applicants(): HasMany
+    {
+        return $this->hasMany(Applicants::class);
+    }
 }

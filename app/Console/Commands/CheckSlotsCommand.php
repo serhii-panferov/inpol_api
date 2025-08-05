@@ -89,5 +89,6 @@ class CheckSlotsCommand extends Command
             //   }
             }
         }
+        $client->cleanUp();
     }
 }
