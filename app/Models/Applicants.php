@@ -14,6 +14,7 @@ class Applicants extends Model
         'last_name',
         'birth_date',
         'inpol_account_id',
+        'person_id',
     ];
 
     protected $casts = [

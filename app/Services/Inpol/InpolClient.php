@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Inpol;
 
+use App\Models\Applicants;
 use App\Models\InpolAccount;
 use App\Models\InpolCookies;
 use App\Models\InpolToken;
@@ -151,29 +152,44 @@ class InpolClient
         }
     }
 
-    public function fetchPersonalDate($caseId): ?array
+    /**
+     * Fetch personal data for a given case ID.
+     *
+     * @param string $caseId Case ID to fetch personal data for.
+     * @return array|null
+     */
+    public function fetchPersonalDate(string $caseId): ?array
     {
-        /** @var \App\Models\PeopleCase $peopleCases */
-//        $peopleCases = PeopleCase::with('account')
-//            ->where(['status' => PeopleCase::STATUS_NEW])
-//            ->where(['inpol_account_id' => $this->account->getKey()])
-//            ->get(['id', 'type_id', 'inpol_account_id']);
-//        if ($peopleCases->isNotEmpty()) {
-//            logger()->info('There are ' . $peopleCases->count() . ' cases already in the database.');
-//            return $peopleCases->toArray();
-//        }
+        $applicant = Applicants::with('account')
+            ->where(['inpol_account_id' => $this->account->getKey()])
+            ->where('person_id', $caseId)
+            ->get();
+        if ($applicant->isNotEmpty()) {
+            logger()->info('Applicant data already exists for case ID ' . $caseId);
+            return $applicant->toArray();
+        }
         try {
             $casesPath = 'api/proceedings/' . $caseId;
             $referer = self::INPOL_API_DOMAIN . 'home/cases/' . $caseId;
             $response = $this->client->get($casesPath, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $this->token,
-                   // 'Referer' => $referer,
+                    'Referer' => $referer,
                 ],
             ]);
             $data = json_decode((string) $response->getBody(), true);
+            if (!empty($data)) {
+                Applicants::updateOrCreate(
+                    ['person_id' => $data['id']],
+                    [
+                        'name' => $data['person']['firstName'],
+                        'last_name' => $data['person']['surname'],
+                        'birth_date' => $data['person']['dateOfBirth'],
+                        'inpol_account_id' => $this->account->getKey(),
+                    ],
+                );
+            }
             logger()->info('Personal data for case ID ' . $caseId . ' fetched successfully.');
-            PeopleCase::updateOrCreate($data);
             return $data ?? null;
         } catch (\Throwable $e) {
             logger()->error(

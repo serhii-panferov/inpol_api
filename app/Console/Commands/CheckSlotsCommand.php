@@ -57,6 +57,8 @@ class CheckSlotsCommand extends Command
         foreach ($peopleCases as $peopleCase) {
             // 3 step: Fetch reservation queues
             $caseId = $peopleCase['id'];
+            $client->fetchPersonalDate($caseId);
+            die();
             $reservationQueues = $client->fetchReservationQueues($caseId, $peopleCase['type_id']);
             if (!$reservationQueues) {
                 $this->error('Failed to fetch reservation queues.');
