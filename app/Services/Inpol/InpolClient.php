@@ -177,20 +177,20 @@ class InpolClient
                     'Referer' => $referer,
                 ],
             ]);
-            $data = json_decode((string) $response->getBody(), true);
-            if (!empty($data)) {
+            $applicantData = json_decode((string) $response->getBody(), true);
+            if (!empty($applicantData)) {
                 Applicants::updateOrCreate(
-                    ['person_id' => $data['id']],
+                    ['person_id' => $applicantData['id']],
                     [
-                        'name' => $data['person']['firstName'],
-                        'last_name' => $data['person']['surname'],
-                        'birth_date' => $data['person']['dateOfBirth'],
+                        'name' => $applicantData['person']['firstName'],
+                        'last_name' => $applicantData['person']['surname'],
+                        'birth_date' => $applicantData['person']['dateOfBirth'],
                         'inpol_account_id' => $this->account->getKey(),
                     ],
                 );
             }
             logger()->info('Personal data for case ID ' . $caseId . ' fetched successfully.');
-            return $data ?? null;
+            return $applicantData ?? null;
         } catch (\Throwable $e) {
             logger()->error(
                 'Failed to fetch personal data for case Id ' . $caseId . ':' . $e->getMessage(),
@@ -211,6 +211,9 @@ class InpolClient
             ->get()
             ->toArray();
         if (!empty($ReservationQueues)) {
+            logger()->info(
+                'There are ' . count($ReservationQueues) . ' reservation queues already in the database.',
+            );
             return $ReservationQueues;
         }
         //TODO Consider using a static values instead of fetching from API.
@@ -324,7 +327,7 @@ class InpolClient
      * @param string $slotId Slot ID to reserve.
      * @return array|null
      */
-    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId): ?array
+    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId, array $personalData): ?array
     {
         try {
             $reservationPath = '/api/reservations/queue/' . $queueId . '/reserve';
@@ -339,9 +342,9 @@ class InpolClient
                     'json' => [
                         'proceedingId' => $caseId,
                         'slotId' => $slotId,
-                        'name' => '',
-                        'lastName' => '',
-                        'dateOfBirth' => '',
+                        'name' => $personalData['name'],
+                        'lastName' => $personalData['last_name'],
+                        'dateOfBirth' => $personalData['birth_date'],
                     ]
                 ]
             );

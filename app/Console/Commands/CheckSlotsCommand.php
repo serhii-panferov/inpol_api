@@ -57,14 +57,22 @@ class CheckSlotsCommand extends Command
         foreach ($peopleCases as $peopleCase) {
             // 3 step: Fetch reservation queues
             $caseId = $peopleCase['id'];
-            $client->fetchPersonalDate($caseId);
-            die();
-            $reservationQueues = $client->fetchReservationQueues($caseId, $peopleCase['type_id']);
+            $personalData = $client->fetchPersonalDate($caseId);
+            if (!$personalData) {
+                $this->error('Failed to fetch personal data for case ID: ' . $caseId);
+                continue;
+            }
+            // type_id - from DB or ['type']['id'] - from API
+            $typeId = $peopleCase['type_id'] ?? $peopleCase['type']['id'];
+            $reservationQueues = $client->fetchReservationQueues($caseId, $typeId);
             if (!$reservationQueues) {
                 $this->error('Failed to fetch reservation queues.');
                 return;
             }
             foreach ($reservationQueues as $reservationQueue) {
+                // local_id - from DB or 'id' - from API
+                $reservationQueueId = $reservationQueue['local_id'] ?? $reservationQueue['id'];
+                $this->info('Case for ' . $peopleCase['person'] . ' with type ID: ' . $typeId);
                 $this->info("Processing reservation queue: " . $reservationQueue['english_name']);
                 // 4 step: Fetch available dates
                // $dates = $client->fetchDates($caseId, $reservationQueue['local_id']);
@@ -73,7 +81,12 @@ class CheckSlotsCommand extends Command
 //                } else {
                     $requestDate = $client->getQueueDate($options);
                 // 5 step: Fetch available dates
-                    $slots = $client->fetchSlots($caseId, $reservationQueue['local_id'], $requestDate, $peopleCase['type_id'],);
+                    $slots = $client->fetchSlots(
+                        $caseId,
+                        $reservationQueueId,
+                        $requestDate,
+                        $typeId,
+                    );
                     if (empty($slots)) {
                         $this->warn('No available slots for the selected date.');
                     } else {
@@ -82,8 +95,9 @@ class CheckSlotsCommand extends Command
                             $this->line('Slot: ' . $slot['id'] . ' at ' . $slot['date']);
                             $client->reserveRoomInQueue(
                                 $caseId,
-                                $reservationQueue['local_id'],
+                                $reservationQueueId,
                                 $slot['id'],
+                                $personalData,
                             );
                         }
                     }
