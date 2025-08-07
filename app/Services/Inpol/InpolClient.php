@@ -138,15 +138,19 @@ class InpolClient
      * This method retrieves cases with status 'new' for the current account.
      *
      * @param int $results The number of results to fetch, default is 10.
+     * @param string|null $caseId Optional case ID to filter results.
+     * @param int $page The page number to fetch, default is 1.
      * @return PeopleCase[]|null
      */
-    public function fetchCases(int $results = 10): ?array
+    public function fetchCases(int $results = 10, ?string $caseId = null, int $page = 1): ?array
     {
-        /** @var \App\Models\PeopleCase $peopleCases */
-        $peopleCases = PeopleCase::with('account')
-            ->where(['status' => PeopleCase::STATUS_NEW])
-            ->where(['inpol_account_id' => $this->account->getKey()])
-            ->get(['id', 'type_id', 'inpol_account_id']);
+        $query = PeopleCase::with('account')
+            ->where('status', PeopleCase::STATUS_NEW)
+            ->where('inpol_account_id', $this->account->getKey());
+        if ($caseId) {
+            $query->where('id', $caseId);
+        }
+        $peopleCases = $query->get(['id', 'type_id', 'inpol_account_id']);
         if ($peopleCases->isNotEmpty()) {
             logger()->info('There are ' . $peopleCases->count() . ' cases already in the database.');
             return $peopleCases->toArray();
@@ -160,18 +164,19 @@ class InpolClient
                     'Referer' => $referer,
                 ],
                 'query' => [
-                    'page' => 1,
+                    'page' => $page,
                     'results' => $results,
                     'filterBy' => '',
                     'orderBy' => '',
                 ],
             ]);
-            $cookies = $this->jar->toArray();
-            logger()->info('Cookies after login: ' . json_encode($cookies));
-            //logger()->info(var_export($response, true));
             $data = json_decode((string) $response->getBody(), true);
-            logger()->info('TotalResults of received cases: ' . $data['totalResults']);
+            logger()->info('TotalResults of received cases: ' . count($data) . ' of ' . $data['totalResults']);
             PeopleCase::updateOrCreateMany($data['items'], $this->account);
+            if ($page < $data['totalPages']) {
+                ++$page;
+                $this->fetchCases($results, $caseId, $page);
+            }
             return $data['items'] ?? null;
         } catch (\Throwable $e) {
             logger()->error('Failed to fetch cases: ' . $e->getMessage());

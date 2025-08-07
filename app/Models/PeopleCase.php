@@ -65,6 +65,12 @@ class PeopleCase extends Model
             if ($item['status'] !== self::STATUS_NEW) {
                 continue;
             }
+            $typeId = TypesPeopleCase::firstOrCreate(
+                ['type_id' => $item['type']['id']],
+                [
+                    'name' => $item['type']['english'],
+                ]
+            );
             self::updateOrCreate(
                 ['id' => $item['id']],
                 [
@@ -73,7 +79,7 @@ class PeopleCase extends Model
                     'person' => $item['person'],
                     'signature' => $item['signature'],
                     'creation_date' => $item['creationDate'],
-                    'type_id' => $item['type']['id'],
+                    'type_id' => $typeId->getKey(),
                     'type_names' => [
                         'polish' => $item['type']['polish'],
                         'english' => $item['type']['english'],

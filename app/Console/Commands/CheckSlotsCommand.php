@@ -47,13 +47,15 @@ class CheckSlotsCommand extends Command
         }
         $this->info('Login successful.');
         //2 step: Fetch people cases
-        $peopleCases = $client->fetchCases();
+        $caseId = $options['case-type-id'] ?? null;
+        $peopleCases = $client->fetchCases(caseId: $caseId);
+        die();
         $countCases = count($peopleCases);
         if (!$countCases) {
             $this->error('Failed to fetch cases.');
             return;
         }
-        $this->info( "$countCases people cases received successful.");
+        $this->info( "$countCases cases received successful.");
         foreach ($peopleCases as $peopleCase) {
             // 3 step: Fetch reservation queues
             $caseId = $peopleCase['id'];
