@@ -439,4 +439,42 @@ class InpolClient
             ->get()
             ->delete();
     }
+
+    /**
+     * Refresh the token for the current account.
+     *
+     * @param string $caseId
+     * @return void
+     */
+    public function refreshToken(string $caseId): void
+    {
+        try {
+            $response = $this->client->post('identity/refresh', [
+                'headers' => [
+                    'Origin' => self::INPOL_API_DOMAIN,
+                    'Referer' => self::INPOL_API_DOMAIN . '/home/cases/' . $caseId,
+                ],
+            ]);
+            $cookies = $this->jar->toArray();
+            if (empty($cookies)) {
+                logger()->error('No cookies received after login.');
+            }
+            InpolCookies::create([
+                'cookie' => json_encode($cookies),
+                'inpol_account_id' => $this->account->getKey(),
+            ]);
+            $data = json_decode((string) $response->getBody(), true);
+            if (!empty($data)) {
+                $this->token = $data;
+                $this->account->tokens()
+                    ->update([
+                        'token' => $this->token,
+                        'expires_at' => now()->addMinutes(15),
+                    ]);
+                logger()->info('Token refreshed successfully.');
+            }
+        } catch (\Throwable $e) {
+            logger()->error('Refresh token failed: ' . $e->getMessage());
+        }
+    }
 }

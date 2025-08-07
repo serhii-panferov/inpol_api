@@ -49,7 +49,6 @@ class CheckSlotsCommand extends Command
         //2 step: Fetch people cases
         $caseId = $options['case-type-id'] ?? null;
         $peopleCases = $client->fetchCases(caseId: $caseId);
-        die();
         $countCases = count($peopleCases);
         if (!$countCases) {
             $this->error('Failed to fetch cases.');
