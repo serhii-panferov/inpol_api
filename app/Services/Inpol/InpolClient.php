@@ -49,6 +49,7 @@ class InpolClient
         ]);
         $this->token = $this->getOrCreateToken();
         $this->updateRequestCookies();
+        $this->selectSiteLanguage();
     }
 
     protected function getOrCreateToken(): ?string
@@ -107,6 +108,32 @@ class InpolClient
     }
 
     /**
+     * Select the site language for a given case ID.
+     *
+     * @return void
+     */
+    public function selectSiteLanguage(): void
+    {
+        try {
+            $casesPath = 'assets/i18n/en.json';
+            $referer = self::INPOL_API_DOMAIN . 'home';
+            $response = $this->client->get($casesPath, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token,
+                    'Referer' => $referer,
+                ],
+            ]);
+            if ($response->getStatusCode() === 200) {
+                logger()->info('Language has been set successfully.');
+            } else {
+                logger()->error('Failed to set Language: ' . $response->getReasonPhrase());
+            }
+        } catch (\Throwable $e) {
+            logger()->error('Failed to set Language: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Fetch cases from Inpol API.
      * This method retrieves cases with status 'new' for the current account.
      *
@@ -130,7 +157,7 @@ class InpolClient
             $response = $this->client->get($casesPath, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $this->token,
-                   // 'Referer' => $referer,
+                    'Referer' => $referer,
                 ],
                 'query' => [
                     'page' => 1,
