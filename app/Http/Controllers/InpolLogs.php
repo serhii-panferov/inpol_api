@@ -12,7 +12,9 @@ class InpolLogs extends Controller
      */
     public function index()
     {
-        $logs = RequestLogs::orderBy('created_at', 'desc')->paginate(10);
+        $logs = RequestLogs::orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(10);
         return view('logs.index', [
             'logs' => $logs,
         ]);
@@ -65,4 +67,5 @@ class InpolLogs extends Controller
     {
         //
     }
+
 }
