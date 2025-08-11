@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class RequestLogs extends Model
 {
+    public $timestamps = false;
+
     protected $table = 'request_logs';
 
     protected $fillable = [
+        'method',
         'request_type',
-        'status',
+        'status_code',
         'url',
         'request_body',
         'request_headers',

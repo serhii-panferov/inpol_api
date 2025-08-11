@@ -22,7 +22,7 @@ return new class extends Migration
             $table->text('response_body')->nullable();
             $table->text('response_headers')->nullable();
             $table->text('cookies')->nullable();
-            $table->integer('duration_ms')->nullable()->after('cookies');
+            $table->integer('duration_ms')->nullable();
             $table->timestamp('created_at')->useCurrent();
         });
     }

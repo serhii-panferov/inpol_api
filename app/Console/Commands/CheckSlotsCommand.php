@@ -45,6 +45,7 @@ class CheckSlotsCommand extends Command
             $this->error('Login failed. ');
             return;
         }
+        die();
         $this->info('Login successful.');
         //2 step: Fetch people cases
         $caseId = $options['case-type-id'] ?? null;
