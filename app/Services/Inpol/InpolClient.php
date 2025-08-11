@@ -12,8 +12,10 @@ use App\Models\PeopleCase;
 use App\Models\ReservationQueues;
 use App\Models\ReservationSlots;
 use App\Models\TypesPeopleCase;
+use App\Services\GuzzleLoggingMiddleware;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
+use GuzzleHttp\HandlerStack;
 use Illuminate\Database\Eloquent\Collection;
 
 class InpolClient
@@ -29,11 +31,14 @@ class InpolClient
 
     public function __construct()
     {
+        $stack = HandlerStack::create();
+        $stack->push(GuzzleLoggingMiddleware::log());
         $this->jar = new CookieJar();
         $this->account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
         $this->client = new Client([
+            'handler' => $stack,
             'base_uri' => self::INPOL_API_DOMAIN,
-            'timeout' => 30,
+            'timeout' => 40,
             'cookies' => $this->jar,
             'headers' => [
                 'Accept-Language' => 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,uk;q=0.6,da;q=0.5',
@@ -150,7 +155,7 @@ class InpolClient
         if ($caseId) {
             $query->where('id', $caseId);
         }
-        $peopleCases = $query->get(['id', 'type_id', 'inpol_account_id']);
+        $peopleCases = $query->get(['id', 'type_id', 'inpol_account_id', 'person']);
         if ($peopleCases->isNotEmpty()) {
             logger()->info('There are ' . $peopleCases->count() . ' cases already in the database.');
             return $peopleCases->toArray();
@@ -235,10 +240,11 @@ class InpolClient
     {
         $ReservationQueues = ReservationQueues::with('typePeopleCase')
             ->where(
-                'type_people_case_id',
-                TypesPeopleCase::where('type_id', $typeId)
-                    ->first()
-                    ->id,
+                'type_people_case_id', $typeId
+            // TODO need to fix
+//                TypesPeopleCase::where('type_id', $typeId)
+//                    ->first()
+//                    ->id,
             )
             ->get()
             ->toArray();
@@ -315,10 +321,11 @@ class InpolClient
     {
         $slots = ReservationSlots::with('typePeopleCase')
             ->where(
-                'type_people_case_id',
-                TypesPeopleCase::where('type_id', $peopleCaseType)
-                    ->first()
-                    ->id,
+                'type_people_case_id', $peopleCaseType
+                // TODO need to fix
+//                TypesPeopleCase::where('type_id', $peopleCaseType)
+//                    ->first()
+//                    ->id,
             )
             ->where('status', '=', 0)
             ->get()
@@ -357,19 +364,19 @@ class InpolClient
      * @param string $caseId Case ID to fetch slots for.
      * @param string $queueId Reservation queue ID to fetch slots for.
      * @param string $slotId Slot ID to reserve.
-     * @return array|null
+     * @return bool|null
      */
-    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId, array $personalData): ?array
+    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId, array $personalData): bool|null
     {
         try {
             $reservationPath = '/api/reservations/queue/' . $queueId . '/reserve';
-            //$referer = self::INPOL_API_DOMAIN . 'home/cases/' . $caseId;
+            $referer = self::INPOL_API_DOMAIN . 'home/cases/' . $caseId;
             $response = $this->client->post(
                 $reservationPath,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->token,
-                      //  'Referer' => $referer,
+                        'Referer' => $referer,
                     ],
                     'json' => [
                         'proceedingId' => $caseId,
@@ -381,8 +388,9 @@ class InpolClient
                 ]
             );
             $slots = json_decode((string)$response->getBody(), true);
-            logger()->info('Available slots: ' . count($slots));
-            return $slots ?? null;
+            logger()->info('Reserved room in queue for case ID: ' . $caseId . ' with slot ID: ' . $slotId);
+            logger()->info(var_export($slots, true));
+            return true;
         } catch (\Throwable $e) {
             logger()->error('Failed to fetch queues slots: ' . $e->getMessage());
             return null;
@@ -436,7 +444,6 @@ class InpolClient
     public function cleanUp()
     {
         InpolCookies::where('inpol_account_id', $this->account->getKey())
-            ->get()
             ->delete();
     }
 

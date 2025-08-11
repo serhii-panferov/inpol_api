@@ -90,16 +90,26 @@ class CheckSlotsCommand extends Command
                     );
                     if (empty($slots)) {
                         $this->warn('No available slots for the selected date.');
+                        //TODO handle the case when timeout occurs
+                        $this->handle($client);
                     } else {
                         $this->info('Available slots: ' . count($slots));
                         foreach ($slots as $slot) {
                             $this->line('Slot: ' . $slot['id'] . ' at ' . $slot['date']);
-                            $client->reserveRoomInQueue(
+                            $reserveRoomInQueue = $client->reserveRoomInQueue(
                                 $caseId,
                                 $reservationQueueId,
                                 $slot['id'],
                                 $personalData,
                             );
+                            if (!$reserveRoomInQueue) {
+                                $client->reserveRoomInQueue(
+                                    $caseId,
+                                    $reservationQueueId,
+                                    $slot['id'],
+                                    $personalData,
+                                );
+                            }
                         }
                     }
 
