@@ -27,7 +27,7 @@ class InpolClient
     protected ?string $token = null;
     protected CookieJar $jar;
 
-    private const INPOL_API_DOMAIN = 'https://inpol.mazowieckie.pl/';
+    public const INPOL_API_DOMAIN = 'https://inpol.mazowieckie.pl/';
 
     public function __construct()
     {

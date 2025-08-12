@@ -39,9 +39,13 @@ class InpolLogs extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(RequestLogs $requestLogs)
+    public function show(RequestLogs $requestLogs, $id)
     {
-        //
+        $logs = $requestLogs::where('id', $id)
+            ->first();
+        return view('logs.show', [
+            'logs' => $logs,
+        ]);
     }
 
     /**
