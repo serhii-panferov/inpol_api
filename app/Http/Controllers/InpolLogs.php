@@ -14,7 +14,7 @@ class InpolLogs extends Controller
     {
         $logs = RequestLogs::orderBy('created_at', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate(10);
+            ->paginate(250);
         return view('logs.index', [
             'logs' => $logs,
         ]);

@@ -22,9 +22,10 @@ class InpolClient
 {
     protected Client $client;
 
-    protected InpolAccount $account;
+    protected ?InpolAccount $account = null;
 
     protected ?string $token = null;
+    protected ?string $tokenExpirationTime = null;
     protected CookieJar $jar;
 
     public const INPOL_API_DOMAIN = 'https://inpol.mazowieckie.pl/';
@@ -35,6 +36,10 @@ class InpolClient
         $stack->push(GuzzleLoggingMiddleware::log());
         $this->jar = new CookieJar();
         $this->account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
+        if ($this->account === null) {
+            logger()->error('Inpol account not found for email: ' . getenv('INPOL_EMAIL'));
+            throw new \Exception('Inpol account not found');
+        }
         $this->client = new Client([
             'handler' => $stack,
             'base_uri' => self::INPOL_API_DOMAIN,
@@ -65,15 +70,17 @@ class InpolClient
             ->first();
         if ($existing) {
             logger()->info('Using existing token: ' . $existing->token);
+            $this->tokenExpirationTime = $existing->expires_at->toDateTimeString();
             return $existing->token;
         }
         $newToken = $this->login();
         logger()->info('New token: ' . $newToken);
         if ($newToken) {
+            $this->tokenExpirationTime = now()->addMinutes(13)->toDateTimeString();
             $this->account->tokens()
                 ->create([
                 'token' => $newToken,
-                'expires_at' => now()->addMinutes(15),
+                'expires_at' => $this->tokenExpirationTime,
             ]);
         }
         return $newToken;
@@ -335,6 +342,9 @@ class InpolClient
             return $slots;
         }
         try {
+            if ($this->tokenExpirationTime <= now()) {
+                $this->refreshToken($caseId);
+            }
             $reservationPath = '/api/reservations/queue/' . $queueId . '/' . $requestDate . '/slots';
             $referer = self::INPOL_API_DOMAIN . 'home/cases/' . $caseId;
             $response = $this->client->post(
@@ -413,13 +423,21 @@ class InpolClient
         //TODO add condition to skip weekends and holidays
         $dateOptions = [
             'date' => $options['date'],
+            '+1 days' => $options['date-next-1days'],
             '+2 days' => $options['date-next-2days'],
+            '+3 days' => $options['date-next-3days'],
+            '+4 days' => $options['date-next-4days'],
+            '+5 days' => $options['date-next-5days'],
             '+6 weeks' => $options['date-next-6weeks'],
             'today' => $options['date-today'],
         ];
         return match (true) {
             $dateOptions['date'] => date('Y-m-d', strtotime($dateOptions['date'])),
+            $dateOptions['+1 days'] => date('Y-m-d', strtotime('+1 days')),
             $dateOptions['+2 days'] => date('Y-m-d', strtotime('+2 days')),
+            $dateOptions['+3 days'] => date('Y-m-d', strtotime('+3 days')),
+            $dateOptions['+4 days'] => date('Y-m-d', strtotime('+4 days')),
+            $dateOptions['+5 days'] => date('Y-m-d', strtotime('+5 days')),
             $dateOptions['+6 weeks'] => date('Y-m-d', strtotime('+6 weeks')),
             $dateOptions['today'] => date('Y-m-d'),
         };
@@ -458,8 +476,12 @@ class InpolClient
         try {
             $response = $this->client->post('identity/refresh', [
                 'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token,
                     'Origin' => self::INPOL_API_DOMAIN,
                     'Referer' => self::INPOL_API_DOMAIN . '/home/cases/' . $caseId,
+                ],
+                'query' => [
+                    'expiry' => 15,
                 ],
             ]);
             $cookies = $this->jar->toArray();
@@ -471,14 +493,18 @@ class InpolClient
                 'inpol_account_id' => $this->account->getKey(),
             ]);
             $data = json_decode((string) $response->getBody(), true);
+            dd($response);
             if (!empty($data)) {
                 $this->token = $data;
+                $this->tokenExpirationTime = now()->addMinutes(1)->toDateTimeString();
                 $this->account->tokens()
                     ->update([
                         'token' => $this->token,
-                        'expires_at' => now()->addMinutes(15),
+                        'expires_at' => $this->tokenExpirationTime,
                     ]);
                 logger()->info('Token refreshed successfully.');
+            } else {
+                exit;
             }
         } catch (\Throwable $e) {
             logger()->error('Refresh token failed: ' . $e->getMessage());

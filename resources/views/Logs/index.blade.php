@@ -15,7 +15,7 @@
                         <th>Request Headers</th>
                         <th>Request Body</th>
                         <th>Response Headers</th>
-                        <th>Response Headers</th>
+                        <th>Response Body</th>
                         <th>Created_at</th>
                     </tr>
                 </thead>

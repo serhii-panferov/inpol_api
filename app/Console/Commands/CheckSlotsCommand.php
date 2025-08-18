@@ -18,7 +18,11 @@ class CheckSlotsCommand extends Command
                         {--case-type-id= : The type ID of the case to check, e.g. "9483073d-97fb-47e7-a126-8a5ce809e568"}
                         {--reservation-queue-id= : The ID of the reservation queue to check}
                         {--date= : The date to check for available slots, e.g. "Y-m-d"}
+                        {--date-next-1days}
                         {--date-next-2days}
+                        {--date-next-3days}
+                        {--date-next-4days}
+                        {--date-next-5days}
                         {--date-next-6weeks}
                         {--date-today}';
 
@@ -45,7 +49,6 @@ class CheckSlotsCommand extends Command
             $this->error('Login failed. ');
             return;
         }
-        die();
         $this->info('Login successful.');
         //2 step: Fetch people cases
         $caseId = $options['case-type-id'] ?? null;
@@ -75,7 +78,7 @@ class CheckSlotsCommand extends Command
                 // local_id - from DB or 'id' - from API
                 $reservationQueueId = $reservationQueue['local_id'] ?? $reservationQueue['id'];
                 $this->info('Case for ' . $peopleCase['person'] . ' with type ID: ' . $typeId);
-                $this->info("Processing reservation queue: " . $reservationQueue['english_name']);
+               // $this->info("Processing reservation queue: " . $reservationQueue['english_name']);
                 // 4 step: Fetch available dates
                // $dates = $client->fetchDates($caseId, $reservationQueue['local_id']);
 //                if (empty($dates)) {
@@ -92,6 +95,7 @@ class CheckSlotsCommand extends Command
                     if (empty($slots)) {
                         $this->warn('No available slots for the selected date.');
                         //TODO handle the case when timeout occurs
+                        sleep(mt_rand(1, 3));
                         $this->handle($client);
                     } else {
                         $this->info('Available slots: ' . count($slots));

@@ -16,6 +16,7 @@ class InpolAccountSeeder extends Seeder
         $accounts = [
             'ok.ilchukk@gmail.com',
             'biuro.ilchuk9@gmail.com',
+            'turno8839@gmail.com',
         ];
 
         foreach ($accounts as $email) {
