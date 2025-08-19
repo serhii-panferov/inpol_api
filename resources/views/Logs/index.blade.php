@@ -5,6 +5,7 @@
     <div class="row">
         <div class="col-12">
             <h1>Logs</h1>
+            {{$logs->links()}}
             <table class="table table-striped" style="font-size: 13px;">
                 <thead>
                     <tr>
@@ -12,7 +13,7 @@
 {{--                        <th>Method</th>--}}
 {{--                        <th>Status Code</th>--}}
                         <th>Url</th>
-                        <th>Request Headers</th>
+                        <th>Status</th>
                         <th>Request Body</th>
                         <th>Response Headers</th>
                         <th>Response Body</th>
@@ -26,7 +27,7 @@
 {{--                            <td>{{ $log->method }}</td>--}}
 {{--                            <td>{{ $log->status_code }}</td>--}}
                             <td>{{ Str::after($log->url, \App\Services\Inpol\InpolClient::INPOL_API_DOMAIN)}}</td>
-                            <td>{{ Str::limit(json_encode($log->request_headers), 50) }}</td>
+                            <td>{{ $log->status_code }}</td>
                             <td>{{ Str::limit(json_encode($log->request_body), 50) }}</td>
                             <td>{{ Str::limit(json_encode($log->response_headers), 50) }}</td>
                             <td>{{ Str::limit(json_encode($log->response_body), 50) }}</td>
@@ -45,6 +46,7 @@
                     @endforeach
                 </tbody>
             </table>
+            {{$logs->links()}}
         </div>
     </div>
     <!-- The only way to do great work is to love what you do. - Steve Jobs -->

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RequestLogs;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 
 class InpolLogs extends Controller
 {
@@ -12,9 +13,10 @@ class InpolLogs extends Controller
      */
     public function index()
     {
+        Paginator::useBootstrap();
         $logs = RequestLogs::orderBy('created_at', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate(250);
+            ->paginate(50);
         return view('logs.index', [
             'logs' => $logs,
         ]);

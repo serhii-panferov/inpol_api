@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\PeopleCase;
 use App\Services\Inpol\InpolClient;
 use Illuminate\Console\Command;
 
@@ -58,7 +59,7 @@ class CheckSlotsCommand extends Command
             $this->error('Failed to fetch cases.');
             return;
         }
-        $this->info( "$countCases cases received successful.");
+        $this->info( "$countCases cases.");
         foreach ($peopleCases as $peopleCase) {
             // 3 step: Fetch reservation queues
             $caseId = $peopleCase['id'];
@@ -108,13 +109,17 @@ class CheckSlotsCommand extends Command
                                 $personalData,
                             );
                             if (!$reserveRoomInQueue) {
-                                $client->reserveRoomInQueue(
+                                $reserveRoomInQueue = $client->reserveRoomInQueue(
                                     $caseId,
                                     $reservationQueueId,
                                     $slot['id'],
                                     $personalData,
                                 );
                             }
+                            PeopleCase::where('id', $caseId)
+                                ->update(['status' => 5]);
+                            //TODO update status of case if room is reserved
+
                         }
                     }
 

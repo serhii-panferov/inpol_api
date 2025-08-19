@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 class InpolClient
 {
+    private const EXPIRED_TIME = 13;
     protected Client $client;
 
     protected ?InpolAccount $account = null;
@@ -76,7 +77,7 @@ class InpolClient
         $newToken = $this->login();
         logger()->info('New token: ' . $newToken);
         if ($newToken) {
-            $this->tokenExpirationTime = now()->addMinutes(13)->toDateTimeString();
+            $this->tokenExpirationTime = now()->addMinutes(1)->toDateTimeString();
             $this->account->tokens()
                 ->create([
                 'token' => $newToken,
@@ -342,7 +343,7 @@ class InpolClient
             return $slots;
         }
         try {
-            if ($this->tokenExpirationTime <= now()) {
+            if ($this->tokenExpirationTime <= now()->toDateTimeString()) {
                 $this->refreshToken($caseId);
             }
             $reservationPath = '/api/reservations/queue/' . $queueId . '/' . $requestDate . '/slots';
@@ -492,9 +493,9 @@ class InpolClient
                 'cookie' => json_encode($cookies),
                 'inpol_account_id' => $this->account->getKey(),
             ]);
-            $data = json_decode((string) $response->getBody(), true);
-            dd($response);
-            if (!empty($data)) {
+
+            if ($response->getStatusCode() === 200) {
+                $data = (string) $response->getBody();
                 $this->token = $data;
                 $this->tokenExpirationTime = now()->addMinutes(1)->toDateTimeString();
                 $this->account->tokens()
