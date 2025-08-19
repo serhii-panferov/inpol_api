@@ -75,18 +75,24 @@ class CheckSlotsCommand extends Command
                 $this->error('Failed to fetch reservation queues.');
                 return;
             }
-            foreach ($reservationQueues as $reservationQueue) {
-                // local_id - from DB or 'id' - from API
-                $reservationQueueId = $reservationQueue['local_id'] ?? $reservationQueue['id'];
-                $this->info('Case for ' . $peopleCase['person'] . ' with type ID: ' . $typeId);
-               // $this->info("Processing reservation queue: " . $reservationQueue['english_name']);
-                // 4 step: Fetch available dates
-               // $dates = $client->fetchDates($caseId, $reservationQueue['local_id']);
+            $reserveRoomInQueue = false;
+            $attempts = 0;
+            $maxAttempts = 10;
+            do {
+                $attempts++;
+                $this->info("Attempt #$attempts for case ID: $caseId");
+                foreach ($reservationQueues as $reservationQueue) {
+                    // local_id - from DB or 'id' - from API
+                    $reservationQueueId = $reservationQueue['local_id'] ?? $reservationQueue['id'];
+                    $this->info('Case for ' . $peopleCase['person'] . ' with type ID: ' . $typeId);
+                     $this->info("Processing reservation queue: " . $reservationQueue['english_name']);
+                    // 4 step: Fetch available dates
+                    // $dates = $client->fetchDates($caseId, $reservationQueue['local_id']);
 //                if (empty($dates)) {
 //                    $this->warn('No available dates.');
 //                } else {
                     $requestDate = $client->getQueueDate($options);
-                // 5 step: Fetch available dates
+                    // 5 step: Fetch available dates
                     $slots = $client->fetchSlots(
                         $caseId,
                         $reservationQueueId,
@@ -94,37 +100,42 @@ class CheckSlotsCommand extends Command
                         $typeId,
                     );
                     if (empty($slots)) {
-                        $this->warn('No available slots for the selected date.');
+                        $this->warn("No available slots for the selected date (attempt #$attempts).");
                         //TODO handle the case when timeout occurs
                         sleep(mt_rand(1, 3));
-                        $this->handle($client);
+                       // $this->handle($client);
+                        continue;
                     } else {
                         $this->info('Available slots: ' . count($slots));
                         foreach ($slots as $slot) {
                             $this->line('Slot: ' . $slot['id'] . ' at ' . $slot['date']);
-                            $reserveRoomInQueue = $client->reserveRoomInQueue(
-                                $caseId,
-                                $reservationQueueId,
-                                $slot['id'],
-                                $personalData,
-                            );
-                            if (!$reserveRoomInQueue) {
-                                $reserveRoomInQueue = $client->reserveRoomInQueue(
+                            // Attempt to reserve the room in the queue
+                            // Retry up to 2 times if the reservation fails
+                            for ($i = 0; $i < 2; $i++) {
+                               $reserveRoomInQueue = $client->reserveRoomInQueue(
                                     $caseId,
                                     $reservationQueueId,
                                     $slot['id'],
                                     $personalData,
                                 );
+                                if ($reserveRoomInQueue) {
+                                    PeopleCase::where('id', $caseId)
+                                        ->update(['status' => 5]);
+                                    $this->info('Reservation successful for case ID: ' . $caseId);
+                                    $this->info('Slot ID: ' . $slot['id'] . ' at ' . $slot['date']);
+                                    break 3;
+                                };
+                                sleep(1);
                             }
-                            PeopleCase::where('id', $caseId)
-                                ->update(['status' => 5]);
-                            //TODO update status of case if room is reserved
-
                         }
                     }
-
-            //   }
-            }
+                    //   }
+                }
+                if (!$reserveRoomInQueue && $attempts < $maxAttempts) {
+                    $this->info("Retrying... (sleeping before next attempt)");
+                    sleep(mt_rand(2, 5)); // пауза между итерациями
+                }
+            } while ($reserveRoomInQueue === false);
         }
         $client->cleanUp();
     }

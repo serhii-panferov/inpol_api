@@ -11,7 +11,6 @@ use App\Models\InpolToken;
 use App\Models\PeopleCase;
 use App\Models\ReservationQueues;
 use App\Models\ReservationSlots;
-use App\Models\TypesPeopleCase;
 use App\Services\GuzzleLoggingMiddleware;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
@@ -77,7 +76,7 @@ class InpolClient
         $newToken = $this->login();
         logger()->info('New token: ' . $newToken);
         if ($newToken) {
-            $this->tokenExpirationTime = now()->addMinutes(1)->toDateTimeString();
+            $this->tokenExpirationTime = now()->addMinutes(InpolClient::EXPIRED_TIME)->toDateTimeString();
             $this->account->tokens()
                 ->create([
                 'token' => $newToken,
@@ -398,6 +397,10 @@ class InpolClient
                     ]
                 ]
             );
+            if ($response->getStatusCode() !== 200) {
+                logger()->error('Failed to reserve room in queue: ' . $response->getReasonPhrase());
+                return false;
+            }
             $slots = json_decode((string)$response->getBody(), true);
             logger()->info('Reserved room in queue for case ID: ' . $caseId . ' with slot ID: ' . $slotId);
             logger()->info(var_export($slots, true));
