@@ -109,11 +109,13 @@ class CheckSlotsCommand extends Command
                         $this->info('Available slots: ' . count($slots));
                         //TODO add multiple queries for each slot
                         foreach ($slots as $slot) {
-                            $this->line('Slot: ' . $slot['id'] . ' at ' . $slot['date']);
+                            $slotId = $slot['slot_id'] ?? $slot['id'];
+                            $this->line('Slot: ' . $slotId . ' at ' . $slot['date']);
                             // Attempt to reserve the room in the queue
                             // Retry up to 2 times if the reservation fails
-                            for ($i = 0; $i < 2; $i++) {
-                               $reserveRoomInQueue = $client->reserveRoomInQueue(
+                            for ($i = 1; $i <= 3; $i++) {
+                                $this->line('Attempting #' . $i . ' to reserve slot ID: ' . $slot['id'] . ' at ' . $slot['date']);
+                                $reserveRoomInQueue = $client->reserveRoomInQueue(
                                     $caseId,
                                     $reservationQueueId,
                                     $slot['id'],

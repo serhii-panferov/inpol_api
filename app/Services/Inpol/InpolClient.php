@@ -12,6 +12,7 @@ use App\Models\PeopleCase;
 use App\Models\ReservationQueues;
 use App\Models\ReservationSlots;
 use App\Services\GuzzleLoggingMiddleware;
+use App\Services\GuzzleTokenMiddleware;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\HandlerStack;
@@ -22,10 +23,10 @@ class InpolClient
     private const EXPIRED_TIME = 13;
     protected Client $client;
 
-    protected ?InpolAccount $account = null;
+    public ?InpolAccount $account = null;
 
     protected ?string $token = null;
-    protected ?string $tokenExpirationTime = null;
+    public ?string $tokenExpirationTime = null;
     protected CookieJar $jar;
 
     public const INPOL_API_DOMAIN = 'https://inpol.mazowieckie.pl/';
@@ -57,6 +58,7 @@ class InpolClient
                 'Connection' => 'keep-alive',
             ],
         ]);
+     //   $this->client->getConfig('handler')->push((new GuzzleTokenMiddleware($this->client, $this))->handle());
         $this->token = $this->getOrCreateToken();
         $this->updateRequestCookies();
         $this->selectSiteLanguage();
@@ -207,8 +209,8 @@ class InpolClient
         $applicant = Applicants::with('account')
             ->where(['inpol_account_id' => $this->account->getKey()])
             ->where('person_id', $caseId)
-            ->get();
-        if ($applicant->isNotEmpty()) {
+            ->first();
+        if ($applicant !== null) {
             logger()->info('Applicant data already exists for case ID ' . $caseId);
             return $applicant->toArray();
         }
@@ -357,9 +359,12 @@ class InpolClient
                 ]
             );
             if ($response->getStatusCode() === 200) {
-                $slots = json_decode((string)$response->getBody(), true);
+                $resp = '[{"id":23497311,"date":"2025-10-01T10:10:00","count":1},{"id":23497320,"date":"2025-10-01T11:10:00","count":2},{"id":23497332,"date":"2025-10-01T12:40:00","count":1}]';
+               // $slots = json_decode((string)$response->getBody(), true);
+                $slots = json_decode($resp, true);
                 if (!empty($slots)) {
                     ReservationSlots::updateOrCreateMany($slots, $peopleCaseType);
+                    logger()->info('Available slots stored in the database.');
                 }
                 logger()->info('Available slots: ' . count($slots));
             }
@@ -414,7 +419,8 @@ class InpolClient
     }
 
     public function getToken(): ?string
-    {
+    {//TODO add relogin if invalid token received
+
         return $this->token;
     }
 

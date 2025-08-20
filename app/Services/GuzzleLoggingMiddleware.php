@@ -18,6 +18,8 @@ class GuzzleLoggingMiddleware
                 return $handler($request, $options)->then(
                     function (ResponseInterface $response) use ($request, $start) {
                         $duration = round((microtime(true) - $start) * 1000, 2);
+                        $responseBody = (string) $response->getBody();
+                        $response->getBody()->rewind();
                         RequestLogs::create([
                             'method'           => $request->getMethod(),
                             'url'              => (string) $request->getUri(),
@@ -25,7 +27,7 @@ class GuzzleLoggingMiddleware
                             'request_body'     => (string) $request->getBody(),
                             'status_code'      => $response->getStatusCode(),
                             'response_headers' => $response->getHeaders(),
-                            'response_body'    => (string) $response->getBody(),
+                            'response_body'    => $responseBody,
                             'cookies'          => $request->getHeaderLine('Cookie'),
                             'duration_ms'      => $duration,
                         ]);

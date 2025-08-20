@@ -27,21 +27,20 @@ class ReservationSlots extends Model
 
     public static function updateOrCreateMany(mixed $data, $peopleCaseType)
     {
-        foreach ($data as $slots) {
-            $caseTypeId = TypesPeopleCase::where(['type_id' => $peopleCaseType])
-                ->get('id')
-                ->first()
-                ->toArray()['id'];
-            foreach ($slots as $slot) {
-                self::updateOrCreate(
+     //   foreach ($data as $slots) {
+//            $caseTypeId = TypesPeopleCase::where(['type_id' => $peopleCaseType])
+//                ->value('id');
+//            dd($caseTypeId);
+            foreach ($data as $slot) {
+                $res = self::updateOrCreate(
                     ['slot_id' => $slot['id']],
                     [
-                        'type_people_case_id' => $caseTypeId,
+                        'type_people_case_id' => $peopleCaseType,
                         'date' => $slot['date'],
                         'count' => $slot['count'],
                     ]
                 );
             }
-        }
+       // }
     }
 }
