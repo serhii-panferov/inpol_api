@@ -77,7 +77,7 @@ class CheckSlotsCommand extends Command
             }
             $reserveRoomInQueue = false;
             $attempts = 0;
-            $maxAttempts = 10;
+            $maxAttempts = 100;
             do {
                 $attempts++;
                 $this->info("Attempt #$attempts for case ID: $caseId");
@@ -107,6 +107,7 @@ class CheckSlotsCommand extends Command
                         continue;
                     } else {
                         $this->info('Available slots: ' . count($slots));
+                        //TODO add multiple queries for each slot
                         foreach ($slots as $slot) {
                             $this->line('Slot: ' . $slot['id'] . ' at ' . $slot['date']);
                             // Attempt to reserve the room in the queue
@@ -123,7 +124,7 @@ class CheckSlotsCommand extends Command
                                         ->update(['status' => 5]);
                                     $this->info('Reservation successful for case ID: ' . $caseId);
                                     $this->info('Slot ID: ' . $slot['id'] . ' at ' . $slot['date']);
-                                    break 3;
+                                    break 4;
                                 };
                                 sleep(1);
                             }
@@ -133,7 +134,7 @@ class CheckSlotsCommand extends Command
                 }
                 if (!$reserveRoomInQueue && $attempts < $maxAttempts) {
                     $this->info("Retrying... (sleeping before next attempt)");
-                    sleep(mt_rand(2, 5)); // пауза между итерациями
+                    sleep(mt_rand(2, 5));
                 }
             } while ($reserveRoomInQueue === false);
         }

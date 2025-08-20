@@ -356,11 +356,13 @@ class InpolClient
                     ],
                 ]
             );
-            $slots = json_decode((string)$response->getBody(), true);
-            if (!empty($slots)) {
-                ReservationSlots::updateOrCreateMany($slots, $peopleCaseType);
+            if ($response->getStatusCode() === 200) {
+                $slots = json_decode((string)$response->getBody(), true);
+                if (!empty($slots)) {
+                    ReservationSlots::updateOrCreateMany($slots, $peopleCaseType);
+                }
+                logger()->info('Available slots: ' . count($slots));
             }
-            logger()->info('Available slots: ' . count($slots));
             return $slots ?? null;
         } catch (\Throwable $e) {
             logger()->error('Failed to fetch queues slots: ' . $e->getMessage());
@@ -467,6 +469,7 @@ class InpolClient
     {
         InpolCookies::where('inpol_account_id', $this->account->getKey())
             ->delete();
+        unset($this->tokenExpirationTime);
     }
 
     /**
