@@ -29,19 +29,21 @@
                             <td>{{ Str::after($log->url, \App\Services\Inpol\InpolClient::INPOL_API_DOMAIN)}}</td>
                             <td>{{ $log->status_code }}</td>
                             <td>
-{{--                                {{ Str::limit(json_encode($log->request_body), 50) }}--}}
+                                {{ Str::limit($log->request_body, 100) }}
+                            </td>
+                            <td>
+{{--                                {{ Str::limit(json_encode($log->response_headers), 50) }}--}}
                                 <button onclick="toggleDetails('headers-{{ $log->id }}')" class="text-blue-600 underline">Show</button>
                                 <div id="headers-{{ $log->id }}" class="hidden mt-1 bg-gray-100 p-2 text-xs rounded">
                                     <pre>{{ json_encode($log->request_headers, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
                                 </div>
                             </td>
-                            <td>{{ Str::limit(json_encode($log->response_headers), 50) }}</td>
                             <td>
-                                {{ Str::limit(json_encode($log->response_body), 50) }}
-                                <button onclick="toggleDetails('resp-{{ $log->id }}')" class="text-blue-600 underline">Show</button>
-                                <div id="resp-{{ $log->id }}" class="hidden mt-1 bg-gray-100 p-2 text-xs rounded max-h-64 overflow-y-auto">
-                                    <pre>{{ Str::limit($log->response_body, 200) }}</pre>
-                                </div>
+                                {{ Str::limit(json_encode($log->response_body), 100) }}
+{{--                                <button onclick="toggleDetails('resp-{{ $log->id }}')" class="text-blue-600 underline">Show</button>--}}
+{{--                                <div id="resp-{{ $log->id }}" class="hidden mt-1 bg-gray-100 p-2 text-xs rounded max-h-64 overflow-y-auto">--}}
+{{--                                    <pre>{{ Str::limit($log->response_body, 200) }}</pre>--}}
+{{--                                </div>--}}
                             </td>
                             <td>{{ $log->created_at }}</td>
                             <td>

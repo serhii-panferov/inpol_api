@@ -14,6 +14,8 @@ class ReservationSlots extends Model
         'date',
         'count',
         'type_people_case_id',
+        'status',
+        'reservation_queue_id',
     ];
 
     protected $casts = [
@@ -25,17 +27,20 @@ class ReservationSlots extends Model
         return $this->belongsTo(TypesPeopleCase::class, 'type_people_case_id');
     }
 
-    public static function updateOrCreateMany(mixed $data, $peopleCaseType)
+    public static function updateOrCreateMany(mixed $data, $peopleCaseType, $queueId)
     {
      //   foreach ($data as $slots) {
 //            $caseTypeId = TypesPeopleCase::where(['type_id' => $peopleCaseType])
 //                ->value('id');
 //            dd($caseTypeId);
+        $reservationQueue = ReservationQueues::where('local_id', $queueId)
+        ->get();
             foreach ($data as $slot) {
                 $res = self::updateOrCreate(
                     ['slot_id' => $slot['id']],
                     [
                         'type_people_case_id' => $peopleCaseType,
+                        'reservation_queue_id' => $reservationQueue->id,
                         'date' => $slot['date'],
                         'count' => $slot['count'],
                     ]

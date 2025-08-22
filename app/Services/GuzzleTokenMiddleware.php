@@ -11,14 +11,8 @@ use Psr\Http\Message\ResponseInterface;
 
 class GuzzleTokenMiddleware
 {
-    protected $client;
-    protected $inpolClient; // your service that can refresh token
-
-    public function __construct(\GuzzleHttp\Client $client, \App\Services\Inpol\InpolClient $inpolClient)
-    {
-        $this->client = $client;
-        $this->inpolClient = $inpolClient;
-    }
+    public function __construct(protected InpolClient $inpolClient)
+    {}
 
     public function handle(): callable
     {
@@ -32,7 +26,8 @@ class GuzzleTokenMiddleware
                             $newToken = $this->inpolClient->login();
                             logger()->info('New token: ' . $newToken);
                             if ($newToken) {
-                                $this->inpolClient->tokenExpirationTime = now()->addMinutes(InpolClient::EXPIRED_TIME)->toDateTimeString();
+                                $this->inpolClient->tokenExpirationTime = now()->addMinutes(InpolClient::EXPIRED_TIME)
+                                    ->toDateTimeString();
                                 $this->inpolClient->account->tokens()
                                     ->create([
                                         'token' => $newToken,
@@ -44,11 +39,14 @@ class GuzzleTokenMiddleware
 
                             return $handler($newRequest, $options);
                         }
-
                         return $response;
                     },
                     function ($reason) {
-                        if ($reason instanceof RequestException && $reason->getResponse() && $reason->getResponse()->getStatusCode() === 401) {
+                        if (
+                            $reason instanceof RequestException &&
+                            $reason->getResponse() &&
+                            $reason->getResponse()->getStatusCode() === 401
+                        ) {
                             logger()->warning("Request failed due to invalid token.");
                         }
                         throw $reason;
@@ -60,7 +58,7 @@ class GuzzleTokenMiddleware
 
     protected function isInvalidToken(ResponseInterface $response): bool
     {
-        $header = jsone_encode($response->getHeaders()['WWW-Authenticate'] ?? []);
+        $header = json_encode($response->getHeaders()['WWW-Authenticate'] ?? []);
         return str_contains($header, 'invalid token') || str_contains($header, 'expired');
     }
 }

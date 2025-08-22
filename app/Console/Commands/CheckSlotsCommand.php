@@ -114,20 +114,23 @@ class CheckSlotsCommand extends Command
                             // Attempt to reserve the room in the queue
                             // Retry up to 2 times if the reservation fails
                             for ($i = 1; $i <= 3; $i++) {
-                                $this->line('Attempting #' . $i . ' to reserve slot ID: ' . $slot['id'] . ' at ' . $slot['date']);
+                                $this->line('Attempting #' . $i . ' to reserve slot ID: ' . $slotId . ' at ' . $slot['date']);
                                 $reserveRoomInQueue = $client->reserveRoomInQueue(
                                     $caseId,
                                     $reservationQueueId,
-                                    $slot['id'],
+                                    $slotId,
                                     $personalData,
                                 );
-                                if ($reserveRoomInQueue) {
+                                if ($reserveRoomInQueue === true) {
                                     PeopleCase::where('id', $caseId)
                                         ->update(['status' => 5]);
                                     $this->info('Reservation successful for case ID: ' . $caseId);
-                                    $this->info('Slot ID: ' . $slot['id'] . ' at ' . $slot['date']);
+                                    $this->info('Slot ID: ' .$slotId . ' at ' . $slot['date']);
                                     break 4;
-                                };
+                                } elseif ($reserveRoomInQueue === 'break') {;
+                                    $this->error('Access Denied for slot ID: ' . $slotId);
+                                    break;
+                                }
                                 sleep(1);
                             }
                         }

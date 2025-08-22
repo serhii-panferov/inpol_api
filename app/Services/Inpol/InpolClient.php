@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 class InpolClient
 {
-    private const EXPIRED_TIME = 13;
+    public const EXPIRED_TIME = 13;
     protected Client $client;
 
     public ?InpolAccount $account = null;
@@ -35,6 +35,7 @@ class InpolClient
     {
         $stack = HandlerStack::create();
         $stack->push(GuzzleLoggingMiddleware::log());
+        $stack->push((new GuzzleTokenMiddleware($this))->handle());
         $this->jar = new CookieJar();
         $this->account = InpolAccount::where('email', getenv('INPOL_EMAIL'))->first();
         if ($this->account === null) {
@@ -58,7 +59,6 @@ class InpolClient
                 'Connection' => 'keep-alive',
             ],
         ]);
-     //   $this->client->getConfig('handler')->push((new GuzzleTokenMiddleware($this->client, $this))->handle());
         $this->token = $this->getOrCreateToken();
         $this->updateRequestCookies();
         $this->selectSiteLanguage();
@@ -363,7 +363,7 @@ class InpolClient
                // $slots = json_decode((string)$response->getBody(), true);
                 $slots = json_decode($resp, true);
                 if (!empty($slots)) {
-                    ReservationSlots::updateOrCreateMany($slots, $peopleCaseType);
+                    ReservationSlots::updateOrCreateMany($slots, $peopleCaseType, $queueId);
                     logger()->info('Available slots stored in the database.');
                 }
                 logger()->info('Available slots: ' . count($slots));
@@ -381,9 +381,9 @@ class InpolClient
      * @param string $caseId Case ID to fetch slots for.
      * @param string $queueId Reservation queue ID to fetch slots for.
      * @param string $slotId Slot ID to reserve.
-     * @return bool|null
+     * @return bool|string|null
      */
-    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId, array $personalData): bool|null
+    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId, array $personalData): bool|string|null
     {
         try {
             $reservationPath = '/api/reservations/queue/' . $queueId . '/reserve';
@@ -413,7 +413,16 @@ class InpolClient
             logger()->info(var_export($slots, true));
             return true;
         } catch (\Throwable $e) {
-            logger()->error('Failed to fetch queues slots: ' . $e->getMessage());
+          if (
+              $e->getCode() === 403 &&
+              str_contains($e->getMessage(), 'Access Denied')
+          ) {
+              ReservationSlots::where('slot_id', $slotId)
+                  ->update(['status' => 5]);
+            logger()->error('Access Denied: ' . $e->getMessage());
+            return 'break';
+          }
+             logger()->error('Failed to fetch queues slots: ' . $e->getMessage());
             return null;
         }
     }
