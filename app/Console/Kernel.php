@@ -15,7 +15,22 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+//        $schedule->command('inpol:check-slots --date-next-6weeks --case-type-id=37595c79-032f-4cf6-a72c-159e801f5efb')
+//            ->everyMinute()
+//            //->withoutOverlapping()
+//            ->appendOutputTo(storage_path('logs/scheduler.log'));
+////        $schedule->command('inpol:check-slots')
+////            ->everyMinute()
+//////            ->withOption('case-type-id', '37595c79-032f-4cf6-a72c-159e801f5efb')
+//////            ->withOption('date-next-6weeks', true)
+////            ->appendOutputTo(storage_path('logs/scheduler.log'));
+///
+///
+        $schedule->command('inpol:check-slots')
+            ->everyMinute()
+            ->appendOutputTo(storage_path('logs/scheduler.log'))
+            ->withOption('case-type-id', '37595c79-032f-4cf6-a72c-159e801f5efb')
+            ->withOption('date-next-6weeks', true);
     }
 
     /**
@@ -30,3 +45,4 @@ class Kernel extends ConsoleKernel
         require base_path('routes/console.php');
     }
 }
+

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\FetchSlotsJob;
 use App\Models\PeopleCase;
 use App\Services\Inpol\InpolClient;
 use Illuminate\Console\Command;
@@ -40,15 +41,15 @@ class CheckSlotsCommand extends Command
      * @param InpolClient $client
      * @return void
      */
-    public function handle(InpolClient $client): void
+    public function handle(InpolClient $client): int
     {
         $options = $this->options();
-        $arguments = $this->arguments();
+       // $arguments = $this->arguments();
         $this->info('Checking dates...');
         //1 step: Check if the token is available
         if (!$client->getToken()) {
             $this->error('Login failed. ');
-            return;
+            return self::FAILURE;
         }
         $this->info('Login successful.');
         //2 step: Fetch people cases
@@ -57,30 +58,19 @@ class CheckSlotsCommand extends Command
         $countCases = count($peopleCases);
         if (!$countCases) {
             $this->error('Failed to fetch cases.');
-            return;
+            return self::FAILURE;
         }
         $this->info( "$countCases cases.");
         foreach ($peopleCases as $peopleCase) {
             // 3 step: Fetch reservation queues
             $caseId = $peopleCase['id'];
-            $personalData = $client->fetchPersonalDate($caseId);
-            if (!$personalData) {
-                $this->error('Failed to fetch personal data for case ID: ' . $caseId);
-                continue;
-            }
             // type_id - from DB or ['type']['id'] - from API
             $typeId = $peopleCase['type_id'] ?? $peopleCase['type']['id'];
             $reservationQueues = $client->fetchReservationQueues($caseId, $typeId);
             if (!$reservationQueues) {
                 $this->error('Failed to fetch reservation queues.');
-                return;
+                return self::FAILURE;
             }
-            $reserveRoomInQueue = false;
-            $attempts = 0;
-            $maxAttempts = 100;
-            do {
-                $attempts++;
-                $this->info("Attempt #$attempts for case ID: $caseId");
                 foreach ($reservationQueues as $reservationQueue) {
                     // local_id - from DB or 'id' - from API
                     $reservationQueueId = $reservationQueue['local_id'] ?? $reservationQueue['id'];
@@ -93,56 +83,12 @@ class CheckSlotsCommand extends Command
 //                } else {
                     $requestDate = $client->getQueueDate($options);
                     // 5 step: Fetch available dates
-                    $slots = $client->fetchSlots(
-                        $caseId,
-                        $reservationQueueId,
-                        $requestDate,
-                        $typeId,
-                    );
-                    if (empty($slots)) {
-                        $this->warn("No available slots for the selected date (attempt #$attempts).");
-                        //TODO handle the case when timeout occurs
-                        sleep(mt_rand(1, 3));
-                       // $this->handle($client);
-                        continue;
-                    } else {
-                        $this->info('Available slots: ' . count($slots));
-                        //TODO add multiple queries for each slot
-                        foreach ($slots as $slot) {
-                            $slotId = $slot['slot_id'] ?? $slot['id'];
-                            $this->line('Slot: ' . $slotId . ' at ' . $slot['date']);
-                            // Attempt to reserve the room in the queue
-                            // Retry up to 2 times if the reservation fails
-                            for ($i = 1; $i <= 3; $i++) {
-                                $this->line('Attempting #' . $i . ' to reserve slot ID: ' . $slotId . ' at ' . $slot['date']);
-                                $reserveRoomInQueue = $client->reserveRoomInQueue(
-                                    $caseId,
-                                    $reservationQueueId,
-                                    $slotId,
-                                    $personalData,
-                                );
-                                if ($reserveRoomInQueue === true) {
-                                    PeopleCase::where('id', $caseId)
-                                        ->update(['status' => 5]);
-                                    $this->info('Reservation successful for case ID: ' . $caseId);
-                                    $this->info('Slot ID: ' .$slotId . ' at ' . $slot['date']);
-                                    break 4;
-                                } elseif ($reserveRoomInQueue === 'break') {;
-                                    $this->error('Access Denied for slot ID: ' . $slotId);
-                                    break;
-                                }
-                                sleep(1);
-                            }
-                        }
-                    }
-                    //   }
+                   $res = FetchSlotsJob::dispatch($caseId, $reservationQueueId, $requestDate, $typeId)
+                        ->delay(now()->addSeconds(rand(1, 5))); // rate limit
                 }
-                if (!$reserveRoomInQueue && $attempts < $maxAttempts) {
-                    $this->info("Retrying... (sleeping before next attempt)");
-                    sleep(mt_rand(2, 5));
-                }
-            } while ($reserveRoomInQueue === false);
         }
-        $client->cleanUp();
+        $this->info('Jobs dispatched for slot fetching.');
+        //$client->cleanUp();
+        return self::SUCCESS;
     }
 }

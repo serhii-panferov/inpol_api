@@ -45,7 +45,7 @@ class InpolClient
         $this->client = new Client([
             'handler' => $stack,
             'base_uri' => self::INPOL_API_DOMAIN,
-            'timeout' => 40,
+            'timeout' => 20,
             'cookies' => $this->jar,
             'headers' => [
                 'Accept-Language' => 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,uk;q=0.6,da;q=0.5',
@@ -381,9 +381,9 @@ class InpolClient
      * @param string $caseId Case ID to fetch slots for.
      * @param string $queueId Reservation queue ID to fetch slots for.
      * @param string $slotId Slot ID to reserve.
-     * @return bool|string|null
+     * @return bool
      */
-    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId, array $personalData): bool|string|null
+    public function reserveRoomInQueue(string $caseId, string $queueId, string $slotId, array $personalData): bool
     {
         try {
             $reservationPath = '/api/reservations/queue/' . $queueId . '/reserve';
@@ -420,10 +420,10 @@ class InpolClient
               ReservationSlots::where('slot_id', $slotId)
                   ->update(['status' => 5]);
             logger()->error('Access Denied: ' . $e->getMessage());
-            return 'break';
+            //return 'break';
           }
              logger()->error('Failed to fetch queues slots: ' . $e->getMessage());
-            return null;
+            return false;
         }
     }
 

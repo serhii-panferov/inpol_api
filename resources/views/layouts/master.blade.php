@@ -4,7 +4,7 @@
 
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Logs</title>
+        <title>@yild('title', 'My Inpol parser')</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <!-- Styles / Scripts -->
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
@@ -16,6 +16,36 @@
         @endif
     </head>
     <body>
+        <header>
+            <nav>
+                <a href="/">Home</a> |
+                <a href="/logs">Logs</a> |
+                <a href="/posts">Posts</a> |
+                <a href="/about">About</a>
+            </nav>
+            <h1>@yield('h1')</h1>
+        </header>
+        @if(session('success'))
+            <div class="flash-message success" >
+                {{ session('success') }}
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="flash-message error" >
+                {{ session('error') }}
+            </div>
+        @endif
         @yield('content')
+        <footer><p>&copy; {{ date('Y') }} My Inpol Parser App</p></footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashMessage = document.querySelector('.flash-message');
+            if (flashMessage) {
+                setTimeout(() => {
+                    flashMessage.classList.add('hidden');
+                }, 3000);
+            }
+        })
+    </script>
     </body>
 </html>

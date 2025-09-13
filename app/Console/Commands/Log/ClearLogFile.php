@@ -26,7 +26,9 @@ class ClearLogFile extends Command
      */
     public function handle()
     {
-        $result = Process::run('echo "" > storage/logs/laravel.log');
+        //TODO udate to use Storage facade
+        // Clear the log files and select what to clear
+        $result = Process::run('echo "" > storage/logs/laravel.log && echo "" > storage/logs/cron.log');
         if ($result->successful()) {
             echo $result->output();
         } else {
