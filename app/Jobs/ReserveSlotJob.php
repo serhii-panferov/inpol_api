@@ -8,7 +8,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class ReserveSlotJob implements ShouldQueue
 {
@@ -31,21 +30,21 @@ class ReserveSlotJob implements ShouldQueue
     {
         $personalData = $client->fetchPersonalDate($this->caseId);
         if (!$personalData) {
-            Log::error("Failed to fetch personal data for {$this->caseId}");
+            logger()->error("Failed to fetch personal data for {$this->caseId}");
             return;
         }
         $success = false;
         for ($i = 0; $i < 3; $i++) {
-            Log::info("Attempting to reserve slot {$this->slotId} for case {$this->caseId}, attempt " . ($i + 1));
+            logger()->info("Attempting to reserve slot {$this->slotId} for case {$this->caseId}, attempt " . ($i + 1));
             $success = $client->reserveRoomInQueue($this->caseId, $this->queueId, $this->slotId, $personalData);
             if ($success) break;
             sleep(2);
         }
         if ($success) {
             PeopleCase::where('id', $this->caseId)->update(['status' => 5]);
-            Log::info("Reserved slot {$this->slotId} for case {$this->caseId}");
+            logger()->info("Reserved slot {$this->slotId} for case {$this->caseId}");
         } else {
-            Log::warning("Failed to reserve slot {$this->slotId} for case {$this->caseId}");
+            logger()->warning("Failed to reserve slot {$this->slotId} for case {$this->caseId}");
         }
     }
 }

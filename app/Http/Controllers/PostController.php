@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PostRequest;
 use App\Models\Post;
 use Illuminate\Http\Request;
 
@@ -27,13 +28,9 @@ class PostController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(PostRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|max:255',
-            'content' => 'nullable|string',
-        ]);
-        Post::create($validated);
+        Post::create($request->validated());
         return redirect()->route('posts.index')->with('success', 'Post created successfully!');
     }
 
@@ -42,8 +39,13 @@ class PostController extends Controller
      */
     public function show(Post $post)
     {
-        $post->load('comments');
-        return view('posts.show', compact('post'));
+        $sort = request()->query('sort', 'desc');
+        $post->load([
+            'comments' => function ($query) use ($sort) {
+                $query->orderBy('created_at', $sort);
+            }
+        ]);
+        return view('posts.show', compact('post', 'sort'));
     }
 
     /**
@@ -57,13 +59,9 @@ class PostController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Post $post)
+    public function update(PostRequest $request, Post $post)
     {
-        $validated = $request->validate([
-            'title' => 'required|max:255',
-            'content' => 'nullable|string',
-        ]);
-        $post->update($validated);
+        $post->update($request->validated());
         return redirect()->route('posts.index');
     }
 

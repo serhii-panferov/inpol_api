@@ -6,6 +6,7 @@ use App\Jobs\FetchSlotsJob;
 use App\Models\PeopleCase;
 use App\Services\Inpol\InpolClient;
 use Illuminate\Console\Command;
+use function Psy\debug;
 
 
 class CheckSlotsCommand extends Command
@@ -82,6 +83,7 @@ class CheckSlotsCommand extends Command
 //                    $this->warn('No available dates.');
 //                } else {
                     $requestDate = $client->getQueueDate($options);
+
                     // 5 step: Fetch available dates
                    $res = FetchSlotsJob::dispatch($caseId, $reservationQueueId, $requestDate, $typeId)
                         ->delay(now()->addSeconds(rand(1, 5))); // rate limit

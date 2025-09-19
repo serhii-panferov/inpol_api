@@ -2,19 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CommentRequest;
 use App\Models\Post;
 use Illuminate\Http\Request;
 
 class CommentsController extends Controller
 {
-    public function store(Request $request, Post $post)
+    public function store(CommentRequest $request, Post $post)
     {
-        $validate = $request->validate([
-            'author' => 'required|string|max:255',
-            'content' => 'required|string',
-        ]);
-
-        $post->comments()->create($validate);
+        $post->comments()->create($request->validated());
         return redirect()->route('posts.show', compact('post'))->with('success', 'Comment added successfully!');
     }
 }
