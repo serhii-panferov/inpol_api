@@ -1,3 +1,6 @@
+![API](https://img.shields.io/badge/api-rest-blue)
+![PHP](https://img.shields.io/badge/php-%3E%3D8.2-777bb4)
+![Last Commit](https://img.shields.io/github/last-commit/Travel-Agency-Fairytale/api)
 # inpol_api
 
 **inpol_api** is a web API built primarily with PHP and Blade templates. This repository provides tools, services, or endpoints to power your web application, offering a robust and scalable platform for backend development.
